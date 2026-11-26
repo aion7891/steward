@@ -1,5 +1,6 @@
 """Installed software discovery and file-type association detector."""
 
+import json
 import plistlib
 import shutil
 import sys
@@ -19,12 +20,14 @@ class SoftwareDetector:
         "sqlite3": [".db", ".sqlite", ".sqlite3"],
     }
 
-    def __init__(self, config, db, logger=None, app_dirs=None):
-        """Initialize the software detector with config, DB, and optional scan dirs."""
+    def __init__(self, config, db, logger=None, app_dirs=None, inventory_file=None):
+        """Initialize the software detector with config, DB, and optional host inventory JSON."""
         self.config = config
         self.db = db
         self.logger = logger
         self.app_dirs = app_dirs
+        raw_inv = inventory_file or config.get("paths.host_inventory_file", "host-inventory/apps.json")
+        self.inventory_file = Path(str(raw_inv)).expanduser()
 
     def detect_and_save(self):
         """Discover installed software, persist to SQLite, and return the list."""
@@ -35,7 +38,15 @@ class SoftwareDetector:
         return records
 
     def discover_software(self):
-        """Scan OS application directories and fall back to common CLI tools."""
+        """Load mounted host-inventory JSON if present, else scan OS apps or CLI tools."""
+        if self.app_dirs is None and self.inventory_file.exists():
+            try:
+                loaded = json.loads(self.inventory_file.read_text(encoding="utf-8"))
+                if isinstance(loaded, list) and loaded:
+                    return sorted(loaded, key=lambda item: item["name"].lower())
+            except (OSError, json.JSONDecodeError) as exc:
+                self._log_warning(f"Failed reading host inventory {self.inventory_file}: {exc}")
+
         records = []
         if self.app_dirs is not None:
             for directory in self.app_dirs:

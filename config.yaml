@@ -3,7 +3,7 @@
 
 app:
   name: "Steward"
-  version: "0.7.0"
+  version: "0.9.0"
   environment: "development"
   log_level: "INFO"
   log_file: "steward.log"
@@ -18,6 +18,7 @@ paths:
   recycle_dir: "data/recycle"
   reports_dir: "reports"
   logs_dir: "data/logs"
+  host_inventory_file: "host-inventory/apps.json"
 
 scanner:
   watched_folders:

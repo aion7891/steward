@@ -21,6 +21,7 @@ vector_store/
 chroma/
 knowledge/
 reports/
+host-inventory/
 
 # OS and editor files
 .DS_Store

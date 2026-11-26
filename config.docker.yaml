@@ -1,0 +1,90 @@
+# Steward Docker configuration pointing to mounted volumes and the Ollama service.
+
+app:
+  name: "Steward"
+  version: "0.9.0"
+  environment: "docker"
+  log_level: "INFO"
+  log_file: "steward.log"
+  log_max_bytes: 5242880
+  log_backup_count: 3
+
+paths:
+  data_dir: "/app/data"
+  db_path: "/app/data/steward.db"
+  vector_store_dir: "/app/chroma"
+  okf_dir: "/app/knowledge"
+  recycle_dir: "/app/data/recycle"
+  reports_dir: "/app/reports"
+  logs_dir: "/app/data/logs"
+  host_inventory_file: "/app/host-inventory/apps.json"
+
+scanner:
+  watched_folders:
+    - "/data/Documents"
+    - "/data/Downloads"
+    - "/data/Desktop"
+  downloads_folder: "/data/Downloads"
+  ignored_dirs:
+    - ".git"
+    - ".venv"
+    - "venv"
+    - "node_modules"
+    - "__pycache__"
+    - ".DS_Store"
+  ignored_extensions:
+    - ".tmp"
+    - ".part"
+    - ".crdownload"
+  large_file_mb: 100
+  stale_days: 90
+  debounce_seconds: 0.5
+
+models:
+  provider: "ollama"
+  model_id: "gemma3:4b"
+  host: "http://ollama:11434"
+  temperature: 0.2
+  embedding_provider: "ollama"
+  embedding_model: "nomic-embed-text"
+  embedding_dimensions: 768
+
+rag:
+  collection_name: "documents"
+  chunk_size: 800
+  chunk_overlap: 120
+  max_file_chars: 100000
+  max_read_mb: 20
+  default_top_k: 5
+  sensitive_patterns:
+    - ".env"
+    - ".env.*"
+    - "*.pem"
+    - "*.key"
+    - "*.p12"
+    - "*.pfx"
+    - "id_rsa*"
+    - "*password*"
+    - "*secret*"
+    - "*credentials*"
+
+safety:
+  dry_run: true
+  require_confirmation: true
+  move_to_recycle_first: true
+  recycle_retention_days: 30
+  protected_paths:
+    - "/System"
+    - "/usr"
+    - "/etc"
+    - "/data/Documents/Work/Clients"
+
+scheduler:
+  scan_interval_minutes: 60
+  cleanup_interval_hours: 24
+  report_day: "sunday"
+
+server:
+  host: "0.0.0.0"
+  port: 7777
+  ui_port: 8501

@@ -51,5 +51,5 @@ flowchart TB
 | **5** | Agno tools, agents, team, and workflows | Done | [phase-5-agents.md](phase-5-agents.md) | [demo_phase5_agents.py](../examples/demo_phase5_agents.py) |
 | **6** | Organizing and cleanup actions | Done | [phase-6-organizing.md](phase-6-organizing.md) | [demo_phase6_organizing.py](../examples/demo_phase6_organizing.py) |
 | **7** | Recommendations and reports | Done | [phase-7-reports.md](phase-7-reports.md) | [demo_phase7_reports.py](../examples/demo_phase7_reports.py) |
-| **8** | Chat UI (AgentOS plus local Streamlit UI) | Planned | — | — |
-| **9** | Docker deployment | Planned | — | — |
+| **8** | Chat UI (AgentOS plus local Streamlit UI) | Done | [phase-8-ui.md](phase-8-ui.md) | [demo_phase8_api.py](../examples/demo_phase8_api.py) |
+| **9** | Docker deployment | Done | [phase-9-docker.md](phase-9-docker.md) | [demo_phase9_worker.py](../examples/demo_phase9_worker.py) |

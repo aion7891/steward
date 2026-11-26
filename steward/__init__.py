@@ -1,7 +1,9 @@
 """Steward package root."""
 
 from steward.agents import StewardAgents
+from steward.api import StewardAPIServer, create_api_app
 from steward.chunker import HashEmbedder, TextChunker
+from steward.client import StewardClient
 from steward.config import AppConfig, ConfigError
 from steward.database import DatabaseManager
 from steward.knowledge_builder import KnowledgeBuilder
@@ -27,9 +29,10 @@ from steward.tools import (
     SoftwareTools,
 )
 from steward.watcher import DownloadsWatcher
+from steward.worker import StewardWorker
 from steward.workflows import StewardWorkflows
 
-__version__ = "0.7.0"
+__version__ = "0.9.0"
 
 __all__ = [
     "AppConfig", "ConfigError", "DatabaseManager", "DocumentContent", "DocumentReader",
@@ -38,6 +41,7 @@ __all__ = [
     "LoggerFactory", "MemoryManager", "ModelConfigError", "ModelFactory", "OKFBundle",
     "OKFGraph", "OKFTools", "OKFValidationError", "OrganizerTools", "PatternMiner",
     "RAGIndex", "RecommenderEngine", "RecycleManager", "ReportGenerator",
-    "ReportTools", "SoftwareDetector", "SoftwareTools", "StewardAgents",
-    "StewardWorkflows", "TextChunker", "__version__",
+    "ReportTools", "SoftwareDetector", "SoftwareTools", "StewardAPIServer",
+    "StewardAgents", "StewardClient", "StewardWorker", "StewardWorkflows",
+    "TextChunker", "create_api_app", "__version__",
 ]
