@@ -1,0 +1,55 @@
+# Steward Architecture & Roadmap
+
+Steward is a local-first, multi-agent AI assistant that monitors your machine, understands your files, keeps long-term curated memory in Open Knowledge Format (OKF v0.3), and helps keep storage clean safely.
+
+## High-Level System Flow
+
+```mermaid
+flowchart TB
+    User([User]) --> UI[Local Chat UI - Streamlit]
+    UI --> API[AgentOS FastAPI Server]
+    API --> Team[Agno Orchestrator Team]
+
+    Team --> A1[ScannerAgent]
+    Team --> A2[AnalyzerAgent]
+    Team --> A3[OrganizerAgent]
+    Team --> A4[RecommenderAgent]
+    Team --> A5[ReporterAgent]
+    Team --> A6[ChatAgent]
+
+    A1 --> DB[(SQLite DB)]
+    A2 --> RAG[(Local Vector Store)]
+    A2 --> OKF[(OKF Bundle - knowledge/)]
+    A3 --> Safety{HITL Confirm + Dry Run}
+    Safety --> Recycle[Recycle Folder + Action Log]
+    A4 --> OKF
+    A5 --> Reports[Markdown / HTML Reports]
+    A6 --> OKF
+    A6 --> RAG
+
+    Scheduler[Background Scheduler] --> WF1[ScanWorkflow]
+    Scheduler --> WF2[CleanupWorkflow]
+    Scheduler --> WF3[ReportWorkflow]
+```
+
+## Memory & Storage Separation
+
+| Store | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Operational Metadata** | SQLite (`data/steward.db`) | Scanned file stats, SHA-256 hashes, scan runs, software inventory, download events, and reversible action logs. |
+| **Raw Passage Search (RAG)** | Local Vector Store + Ollama Embeddings | Chunked raw text from documents for passage-level semantic search. |
+| **Curated Long-Term Memory** | OKF v0.3 (`knowledge/`) + NetworkX | Distilled summaries, projects, topics, user preferences, learned patterns, and decision history (no secrets or raw sensitive copies). |
+
+## Build Phases
+
+| Phase | Title | Status | Documentation | Manual Demo |
+| :---: | :--- | :---: | :--- | :--- |
+| **1** | Foundation and config | Done | [phase-1-foundation.md](phase-1-foundation.md) | [demo_phase1_foundation.py](../examples/demo_phase1_foundation.py) |
+| **2** | File scanning and database | Done | [phase-2-scanning.md](phase-2-scanning.md) | [demo_phase2_scanning.py](../examples/demo_phase2_scanning.py) |
+| **3** | Document reading and RAG | Planned | — | — |
+| **4** | OKF knowledge bundle, graph, and memory | Planned | — | — |
+| **5** | Agno tools, agents, team, and workflows | Planned | — | — |
+| **6** | Organizing and cleanup actions | Planned | — | — |
+| **7** | Recommendations and reports | Planned | — | — |
+| **8** | Chat UI (AgentOS plus local Streamlit UI) | Planned | — | — |
+| **9** | Docker deployment | Planned | — | — |
