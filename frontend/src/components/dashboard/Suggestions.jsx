@@ -9,17 +9,14 @@ import EmptyState from "../ui/EmptyState.jsx";
 
 const MB = 1024 * 1024;
 
-export default function Suggestions({ suggestions }) {
+export default function Suggestions({ suggestions, subtitle = "Based on the latest scans", showScanLink = true }) {
+  const scanLink = (
+    <Link to="/scan" className="btn btn--sm btn--secondary">
+      <FolderSearch size={14} aria-hidden="true" /> Scan a folder
+    </Link>
+  );
   return (
-    <Card
-      title="Suggestions"
-      subtitle="Based on the latest scans"
-      actions={
-        <Link to="/scan" className="btn btn--sm btn--secondary">
-          <FolderSearch size={14} aria-hidden="true" /> Scan a folder
-        </Link>
-      }
-    >
+    <Card title="Suggestions" subtitle={subtitle} actions={showScanLink ? scanLink : null}>
       {suggestions.length === 0 ? (
         <EmptyState icon={Sparkles} title="Nothing to suggest">
           Your scanned folders look tidy.

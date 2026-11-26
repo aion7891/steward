@@ -151,6 +151,8 @@ class TestFolderScanJobs:
         result = job["result"]
         assert result["scan"]["files_seen"] == 4
         assert result["findings"]["temp_files"]["count"] == 2
+        assert result["findings"]["temp_files"]["total_bytes"] == len("temp data") + len("old temp data!")
+        assert result["findings"]["duplicates"]["total_bytes"] == len("same content")
         assert len(result["proposals"]["created"]) == 3
         assert jobs.list_recent()[0]["id"] == job["id"] and "result" not in jobs.list_recent()[0]
 

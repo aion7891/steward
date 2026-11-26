@@ -62,6 +62,7 @@ class FolderAdvisor:
                 "count": len(findings["duplicates"]),
                 "extra_copies": len(extras),
                 "total_mb": self._mb(extras),
+                "total_bytes": self._bytes(extras),
                 "items": [
                     {"sha256": g["sha256"], "copies": [self._compact(f) for f in g["copies"]]}
                     for g in findings["duplicates"][: self.ITEM_LIMIT]
@@ -141,7 +142,7 @@ class FolderAdvisor:
 
     def _section(self, records):
         """Return count, total MB and compact example items for one finding list."""
-        return {"count": len(records), "total_mb": self._mb(records),
+        return {"count": len(records), "total_mb": self._mb(records), "total_bytes": self._bytes(records),
                 "items": [self._compact(r) for r in records[: self.ITEM_LIMIT]]}
 
     @staticmethod

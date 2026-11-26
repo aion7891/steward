@@ -27,7 +27,7 @@ export function describeResult(result) {
   return { tone: "danger", text: (result && result.message) || "The action could not be completed." };
 }
 
-export default function TodoList({ todo, waiting, dryRun, onChanged }) {
+export default function TodoList({ todo, waiting, dryRun, onChanged, title = "To-do" }) {
   const [busyId, setBusyId] = useState(null);
   const [notice, setNotice] = useState(null);
 
@@ -50,7 +50,7 @@ export default function TodoList({ todo, waiting, dryRun, onChanged }) {
     ? "Dry-run is ON: approving previews an action without changing files."
     : "Dry-run is OFF: approving changes files right away.";
   return (
-    <Card title="To-do" subtitle={subtitle} actions={<Badge tone={todo.length ? "warning" : "success"}>{todo.length} open</Badge>}>
+    <Card title={title} subtitle={subtitle} actions={<Badge tone={todo.length ? "warning" : "success"}>{todo.length} open</Badge>}>
       <div className="stack">
         {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
         {todo.length === 0 && waiting.length === 0 ? (
