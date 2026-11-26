@@ -5,7 +5,8 @@ from pathlib import Path
 from agno.db.sqlite import SqliteDb
 from agno.workflow import Step, StepOutput, Workflow
 
-from steward.tools import OrganizerTools, ReportTools
+from steward.proposals import ProposalService
+from steward.tools import ReportTools
 
 
 class StewardWorkflows:
@@ -19,9 +20,8 @@ class StewardWorkflows:
         self.workflow_db = SqliteDb(
             db_file=str(app.config.get_path("data_dir") / "agno_sessions.db")
         )
-        self.organizer_tools = OrganizerTools(
-            app.config, app.db, memory_manager=app.memory_manager, logger=self.logger, organizer=app.organizer
-        )
+        # Cleanup only PROPOSES; a human approves each action later (never auto-approved)
+        self.proposals = ProposalService(app.config, app.db, app.organizer)
         self.report_tools = ReportTools(
             app.config, app.db, app.scanner, app.okf_graph,
             recommender=app.recommender, reporter=app.reporter,
@@ -102,27 +102,23 @@ class StewardWorkflows:
         return StepOutput(content={"findings": findings}, success=True)
 
     def _step_propose_cleanup(self, step_input):
-        """Step 2 of CleanupWorkflow: propose safe dry-run actions awaiting confirmation."""
+        """Step 2 of CleanupWorkflow: create 'proposed' actions that wait for the user's approval."""
         prev = step_input.previous_step_content if isinstance(step_input.previous_step_content, dict) else {}
         findings = prev.get("findings", {})
-        proposals = []
-
-        for temp_file in findings.get("temp_files", [])[:10]:
-            result = self.organizer_tools.delete_files(
-                [temp_file["path"]], reason="Temporary file candidate", dry_run=True
-            )
-            proposals.append({"action": "delete", "path": temp_file["path"], "result": result})
-
+        items = [{"action_type": "delete", "source_path": f["path"], "reason": "Temporary file candidate"}
+                 for f in findings.get("temp_files", [])[:10]]
         for group in findings.get("duplicates", [])[:10]:
             # Keep the earliest copy and propose recycling extra duplicates
-            for extra_copy in group["files"][1:]:
-                result = self.organizer_tools.delete_files(
-                    [extra_copy["path"]], reason="Duplicate file candidate", dry_run=True
-                )
-                proposals.append({"action": "delete", "path": extra_copy["path"], "result": result})
-
+            items.extend({"action_type": "delete", "source_path": f["path"], "reason": "Duplicate file candidate"}
+                         for f in group["files"][1:])
+        # Files already deleted or moved must not be proposed again
+        items = [item for item in items if Path(item["source_path"]).exists()]
+        outcome = self.proposals.propose_many(items)
+        proposals = [{"action": "delete", "path": r["source_path"], "result": r} for r in outcome["created"]]
         return StepOutput(
-            content={"findings": findings, "proposals": proposals, "awaiting_confirmation": True},
+            content={"findings": findings, "proposals": proposals, "awaiting_confirmation": True,
+                     "already_open": len(outcome["already_open"]),
+                     "skipped_protected": len(outcome["skipped_protected"])},
             success=True,
         )
 
@@ -141,7 +137,8 @@ class StewardWorkflows:
             logged.append(rel)
         self.app.okf_bundle.refresh_index()
         return StepOutput(
-            content={"proposals_count": len(proposals), "okf_decisions": logged, "awaiting_confirmation": True},
+            content={"proposals_count": len(proposals), "okf_decisions": logged, "awaiting_confirmation": True,
+                     "already_open": prev.get("already_open", 0), "skipped_protected": prev.get("skipped_protected", 0)},
             success=True,
         )
 

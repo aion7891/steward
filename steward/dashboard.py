@@ -40,7 +40,8 @@ class DashboardService:
             "days": days,
             "status": dict(self._status_cards(advice["reclaimable_mb"]), reclaimable_bytes=advice["reclaimable_bytes"]),
             "daily": self._daily_series(days),
-            "todo": self._todo(),
+            "todo": self._actions_with_size("proposed"),
+            "approved_waiting": self._actions_with_size("approved"),
             "suggestions": advice["suggestions"],
             "findings": self.advisor.summarize(findings),
             "categories": self._categories(),
@@ -79,8 +80,7 @@ class DashboardService:
             "files_checked_today": runs_today["seen"],
             "files_changed_today": runs_today["changed"],
             "pending_actions": self._count_actions("proposed"),
-            "simulated_actions": self._one(
-                "SELECT COUNT(*) AS n FROM actions WHERE status = 'approved' AND dry_run = 1")["n"],
+            "approved_waiting": self._count_actions("approved"),
             "errors_24h": scan_errors["n"] + failed["n"],
             "reclaimable_mb": reclaimable_mb,
         }
@@ -110,10 +110,15 @@ class DashboardService:
         return {"date": day.isoformat(), "scans": 0, "files_checked": 0, "files_changed": 0,
                 "errors": 0, "downloads": 0, "proposals": 0, "actions_done": 0}
 
-    def _todo(self, limit=50):
-        """Proposed actions waiting for the user, newest first, with the file size if known."""
+    def _actions_with_size(self, status, limit=50):
+        """Actions with one status (newest first), each with the file size if known.
+
+        Args:
+            status: 'proposed' (needs a decision) or 'approved' (approved, not yet run).
+            limit: maximum number of rows.
+        """
         items = []
-        for action in self.app.organizer.list_actions(status="proposed", limit=limit):
+        for action in self.app.organizer.list_actions(status=status, limit=limit):
             record = self.db.get_file(action["source_path"])
             size = int(record["size_bytes"]) if record else 0
             items.append(dict(action, size_bytes=size, size_mb=round(size / MB, 2)))

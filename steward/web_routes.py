@@ -33,6 +33,26 @@ class WebRoutes:
         """
         self._register_dashboard(api)
         self._register_folder_scan(api)
+        self._register_execute(api)
+
+    def _register_execute(self, api):
+        """POST /steward/actions/{id}/execute: run an action that is already approved.
+
+        Approving while dry-run is on only previews the action and leaves it 'approved'.
+        This route lets the user run it for real later, without approving it twice.
+        """
+
+        @api.post("/steward/actions/{action_id}/execute")
+        def execute_action(action_id, payload=Body(default=None)):
+            data = payload or {}
+            dry_run = None if data.get("dry_run") is None else self._as_bool(data["dry_run"])
+            try:
+                result = self.app.organizer.execute_action(int(action_id), dry_run=dry_run)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="action_id must be a number.") from exc
+            if result["status"] == "not_found":
+                raise HTTPException(status_code=404, detail=result["message"])
+            return result
 
     def _register_dashboard(self, api):
         """GET /steward/dashboard: stats, daily series, to-do and suggestions."""
