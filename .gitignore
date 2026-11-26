@@ -1,0 +1,27 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Local databases, indexes, and personal data
+*.db
+*.sqlite
+*.sqlite3
+data/
+vector_store/
+chroma/
+knowledge/
+reports/
+
+# OS and editor files
+.DS_Store
+.vscode/
+.idea/
