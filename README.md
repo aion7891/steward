@@ -41,6 +41,8 @@ uv run steward --workflow cleanup   # Run CleanupWorkflow (find -> dry-run propo
 uv run steward --workflow report    # Run ReportWorkflow (stats -> report -> OKF concept)
 uv run steward --chat "Summarize my recent files"  # Chat with the Agno Orchestrator Team
 uv run steward --undo 1             # Undo a completed move, ZIP archive, or recycle action by ID
+uv run steward --recommend          # Mine work patterns into OKF and print proactive suggestions
+uv run steward --report both        # Generate Markdown + styled HTML reports in reports/
 ```
 
 ---
@@ -73,6 +75,10 @@ Run these self-contained demo scripts to see each phase working step by step:
   ```bash
   uv run python examples/demo_phase6_organizing.py
   ```
+- **Phase 7 Demo** ([examples/demo_phase7_reports.py](examples/demo_phase7_reports.py)): Mines recurring work patterns into OKF `memory/patterns/`, generates prioritized cleanup suggestions, and renders both Markdown and styled HTML Jinja2 reports inside `data/demo_phase7/reports/`.
+  ```bash
+  uv run python examples/demo_phase7_reports.py
+  ```
 
 ---
 
@@ -87,6 +93,6 @@ Documentation is organized by architecture and phase, with Mermaid flow diagrams
 - [Phase 4: OKF Knowledge Bundle, Graph, and Memory](docs/phase-4-okf.md) — **Done**
 - [Phase 5: Agno Tools, Agents, Team, and Workflows](docs/phase-5-agents.md) — **Done**
 - [Phase 6: Organizing and Cleanup Actions](docs/phase-6-organizing.md) — **Done**
-- Phase 7: Recommendations and reports — *Next*
-- Phase 8: Chat UI (AgentOS + Streamlit) — *Planned*
+- [Phase 7: Recommendations and Reports](docs/phase-7-reports.md) — **Done**
+- Phase 8: Chat UI (AgentOS + Streamlit) — *Next*
 - Phase 9: Docker deployment — *Planned*

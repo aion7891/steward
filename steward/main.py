@@ -15,6 +15,8 @@ from steward.okf_graph import OKFGraph
 from steward.organizer import FileOrganizer
 from steward.rag import RAGIndex
 from steward.reader import DocumentReader
+from steward.recommender import RecommenderEngine
+from steward.reporter import ReportGenerator
 from steward.scanner import FileScanner
 from steward.software import SoftwareDetector
 from steward.watcher import DownloadsWatcher
@@ -22,7 +24,7 @@ from steward.workflows import StewardWorkflows
 
 
 class StewardApp:
-    """Coordinates config, SQLite, scanning, RAG, OKF, organizer, agents, and workflows."""
+    """Coordinates config, SQLite, scanning, RAG, OKF, organizer, reports, and agents."""
 
     def __init__(self, config_path=None, env_path=None, base_dir=None):
         """Load configuration and initialize core Steward services."""
@@ -41,6 +43,11 @@ class StewardApp:
         self.knowledge_builder = KnowledgeBuilder(self.okf_bundle, self.okf_graph, reader=self.reader, logger=self.logger)
         self.organizer = FileOrganizer(self.config, self.db, memory_manager=self.memory_manager, logger=self.logger)
         self.recycle_manager = self.organizer.recycle
+        self.recommender = RecommenderEngine(self.config, self.db, self.scanner, memory_manager=self.memory_manager, logger=self.logger)
+        self.reporter = ReportGenerator(
+            self.config, self.db, self.scanner, self.okf_graph, self.recommender,
+            okf_bundle=self.okf_bundle, logger=self.logger,
+        )
         self._rag_index, self._agents, self._workflows = None, None, None
 
     def get_rag_index(self, embedder=None):
@@ -148,6 +155,20 @@ class StewardApp:
             print("No matching OKF concepts found.")
         return hits
 
+    def run_recommendations(self):
+        """Mine work patterns and print proactive cleanup/organization suggestions."""
+        rec = self.recommender.generate_recommendations(persist_patterns=True)
+        print(f"Patterns found: {len(rec['patterns'])} | Suggestions: {len(rec['suggestions'])} ({rec['total_reclaimable_mb']} MB reclaimable)")
+        for s in rec["suggestions"]:
+            print(f"  - [{s['priority'].upper()}] {s['title']} ({s['reclaimable_mb']} MB): {s['reason']}")
+        return rec
+
+    def run_report(self, output_format="markdown", period="weekly"):
+        """Generate a Markdown, HTML, or dual report and print output path(s)."""
+        res = self.reporter.generate_report(period=period, output_format=output_format)
+        print(f"Report generated: {res['files']} | OKF: {res['okf_concept']}")
+        return res
+
     def run_workflow(self, name):
         """Run one of Steward's deterministic Agno Workflows (scan, cleanup, report)."""
         res = self.get_workflows().run_workflow(name)
@@ -180,6 +201,8 @@ class StewardCLI:
         ("--search", {"default": None, "help": "Search indexed document passages."}),
         ("--build-okf", {"action": "store_true", "help": "Build OKF knowledge bundle."}),
         ("--okf-search", {"default": None, "help": "Search curated OKF concepts."}),
+        ("--recommend", {"action": "store_true", "help": "Mine work patterns and print suggestions."}),
+        ("--report", {"choices": ["markdown", "html", "both"], "help": "Generate periodic report."}),
         ("--workflow", {"choices": ["scan", "cleanup", "report"], "help": "Run an Agno workflow."}),
         ("--chat", {"default": None, "help": "Ask the Agno Orchestrator Team a question."}),
         ("--undo", {"type": int, "default": None, "help": "Undo a completed file action by ID."}),
@@ -203,6 +226,8 @@ class StewardCLI:
                 (args.search, lambda: app.run_search(args.search)),
                 (args.build_okf, app.run_build_okf),
                 (args.okf_search, lambda: app.run_okf_search(args.okf_search)),
+                (args.recommend, app.run_recommendations),
+                (args.report, lambda: app.run_report(output_format=args.report)),
                 (args.workflow, lambda: app.run_workflow(args.workflow)),
                 (args.chat, lambda: app.run_chat(args.chat)),
                 (args.undo is not None, lambda: print(app.organizer.undo_action(args.undo))),

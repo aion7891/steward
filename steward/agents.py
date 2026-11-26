@@ -33,7 +33,10 @@ class StewardAgents:
         self.organizer_tools = OrganizerTools(
             app.config, app.db, memory_manager=app.memory_manager, logger=app.logger, organizer=app.organizer
         )
-        self.report_tools = ReportTools(app.config, app.db, app.scanner, app.okf_graph)
+        self.report_tools = ReportTools(
+            app.config, app.db, app.scanner, app.okf_graph,
+            recommender=app.recommender, reporter=app.reporter,
+        )
 
         self.scanner_agent = self._build_scanner_agent()
         self.analyzer_agent = self._build_analyzer_agent()
@@ -98,9 +101,9 @@ class StewardAgents:
         return Agent(
             name="RecommenderAgent",
             role="Studies file activity and OKF patterns to suggest helpful next actions.",
-            tools=[self.scanner_tools, self.okf_tools],
+            tools=[self.scanner_tools, self.report_tools, self.okf_tools],
             instructions=(
-                "Review OKF patterns, duplicates, stale files, and large files to recommend "
+                "Use get_recommendations and OKFTools to mine work patterns and recommend "
                 "practical cleanup or organization steps without modifying any files."
             ),
             **self._base_agent_kwargs(),

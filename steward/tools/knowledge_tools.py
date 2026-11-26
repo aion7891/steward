@@ -1,7 +1,4 @@
-"""Agno Toolkits for OKF knowledge graph operations and reporting."""
-
-from datetime import datetime, timezone
-from pathlib import Path
+"""Agno Toolkits for OKF knowledge graph operations, recommendations, and reporting."""
 
 from agno.tools import Toolkit
 
@@ -37,11 +34,8 @@ class OKFTools(Toolkit):
     def write_concept(self, rel_path, concept_type, title, description, body, tags=None, sources=None):
         """Validate and write a curated OKF concept, updating the NetworkX graph."""
         frontmatter = {
-            "type": concept_type,
-            "title": title,
-            "description": description,
-            "tags": list(tags or []),
-            "sources": list(sources or []),
+            "type": concept_type, "title": title, "description": description,
+            "tags": list(tags or []), "sources": list(sources or []),
         }
         try:
             saved = self.bundle.write_concept(rel_path, frontmatter, body)
@@ -69,104 +63,61 @@ class OKFTools(Toolkit):
         hits = self.bundle.search_concepts(query, limit=limit, concept_type=concept_type)
         compact = [
             {
-                "rel_path": h["rel_path"],
-                "type": h["frontmatter"].get("type"),
+                "rel_path": h["rel_path"], "type": h["frontmatter"].get("type"),
                 "title": h["frontmatter"].get("title"),
                 "description": h["frontmatter"].get("description", ""),
-                "sources": h["frontmatter"].get("sources", []),
-                "score": h.get("score", 0),
+                "sources": h["frontmatter"].get("sources", []), "score": h.get("score", 0),
             }
             for h in hits
         ]
-        return {
-            "status": "ok",
-            "message": f"Found {len(compact)} OKF concept(s) matching '{query}'.",
-            "results": compact,
-        }
+        return {"status": "ok", "message": f"Found {len(compact)} OKF concept(s) matching '{query}'.", "results": compact}
 
     def neighbors(self, rel_path, depth=1):
         """Return linked neighboring concepts from the OKF NetworkX graph."""
         related = self.graph.get_neighbors(rel_path, depth=depth)
-        return {
-            "status": "ok",
-            "message": f"Found {len(related)} neighbor(s) for {rel_path}.",
-            "neighbors": related,
-        }
+        return {"status": "ok", "message": f"Found {len(related)} neighbor(s) for {rel_path}.", "neighbors": related}
 
 
 class ReportTools(Toolkit):
-    """Agno Toolkit for collecting system statistics and rendering Markdown reports."""
+    """Agno Toolkit for recommendations, system stats, and Markdown/HTML Jinja2 reports."""
 
-    def __init__(self, config, db, scanner, graph):
-        """Register statistics aggregation and report rendering tools."""
+    def __init__(self, config, db, scanner, graph, recommender=None, reporter=None):
+        """Register recommendation and reporting tool functions."""
         self.config = config
         self.db = db
         self.scanner = scanner
         self.graph = graph
+        if recommender is None:
+            from steward.recommender import RecommenderEngine
+            recommender = RecommenderEngine(config, db, scanner)
+        if reporter is None:
+            from steward.reporter import ReportGenerator
+            reporter = ReportGenerator(config, db, scanner, graph, recommender)
+        self.recommender = recommender
+        self.reporter = reporter
         super().__init__(
             name="report_tools",
-            tools=[self.collect_stats, self.render_report],
+            tools=[self.collect_stats, self.get_recommendations, self.render_report],
         )
 
     def collect_stats(self):
-        """Collect disk usage, category counts, software stats, and cleanup findings."""
-        files = self.db.list_files()
-        by_category = {}
-        total_bytes = 0
-        for item in files:
-            size = int(item.get("size_bytes", 0))
-            total_bytes += size
-            cat = item.get("category") or "other"
-            by_category[cat] = by_category.get(cat, 0) + 1
+        """Collect disk usage, category counts, activity timeline, software, and suggestions."""
+        data = self.reporter.collect_report_data(period="snapshot", persist_patterns=False)
+        return {"status": "ok", "message": "Collected system statistics.", "stats": data}
 
-        findings = self.scanner.get_cleanup_findings()
-        apps = self.db.list_software()
-        stats = {
-            "total_files": len(files),
-            "total_size_mb": round(total_bytes / (1024 * 1024), 2),
-            "by_category": by_category,
-            "duplicate_groups": len(findings["duplicates"]),
-            "large_files": len(findings["large_files"]),
-            "stale_files": len(findings["stale_files"]),
-            "temp_files": len(findings["temp_files"]),
-            "installed_apps": len(apps),
-            "okf_graph": self.graph.stats(),
-        }
-        return {"status": "ok", "message": "Collected system statistics.", "stats": stats}
-
-    def render_report(self, period="weekly", title="Steward Activity Report"):
-        """Render a Markdown report to reports/ and log it in SQLite."""
-        stats = self.collect_stats()["stats"]
-        now = datetime.now(timezone.utc)
-        stamp = now.strftime("%Y%m%d-%H%M%S")
-        reports_dir = self.config.get_path("reports_dir")
-        reports_dir.mkdir(parents=True, exist_ok=True)
-        out_path = Path(reports_dir) / f"steward_{period}_{stamp}.md"
-
-        lines = [
-            f"# {title} ({period})",
-            "",
-            f"- Generated: `{now.isoformat()}`",
-            f"- Tracked files: **{stats['total_files']}** ({stats['total_size_mb']} MB)",
-            f"- Installed apps: **{stats['installed_apps']}**",
-            f"- OKF knowledge graph: **{stats['okf_graph']['nodes']} nodes, {stats['okf_graph']['edges']} edges**",
-            "",
-            "## Cleanup Summary",
-            f"- Duplicate groups: {stats['duplicate_groups']}",
-            f"- Large files: {stats['large_files']}",
-            f"- Stale files: {stats['stale_files']}",
-            f"- Temporary files: {stats['temp_files']}",
-            "",
-            "## File Categories",
-        ]
-        for cat, count in sorted(stats["by_category"].items()):
-            lines.append(f"- `{cat}`: {count}")
-
-        out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        self.db.record_report(period, str(out_path))
+    def get_recommendations(self, persist_patterns=True):
+        """Mine work patterns into OKF and return prioritized cleanup/grouping suggestions."""
+        rec = self.recommender.generate_recommendations(persist_patterns=persist_patterns)
         return {
             "status": "ok",
-            "message": f"Saved {period} report to {out_path.name}.",
-            "report_path": str(out_path),
-            "stats": stats,
+            "message": f"Generated {len(rec['suggestions'])} suggestion(s) ({rec['total_reclaimable_mb']} MB reclaimable).",
+            "patterns": rec["patterns"],
+            "suggestions": rec["suggestions"],
+            "total_reclaimable_mb": rec["total_reclaimable_mb"],
         }
+
+    def render_report(self, period="weekly", output_format="markdown", title="Steward Activity Report"):
+        """Render a Markdown, HTML, or dual report to reports/ and log it in SQLite."""
+        return self.reporter.generate_report(
+            period=period, output_format=output_format, title=title, save_okf=False
+        )

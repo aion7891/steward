@@ -22,7 +22,10 @@ class StewardWorkflows:
         self.organizer_tools = OrganizerTools(
             app.config, app.db, memory_manager=app.memory_manager, logger=self.logger, organizer=app.organizer
         )
-        self.report_tools = ReportTools(app.config, app.db, app.scanner, app.okf_graph)
+        self.report_tools = ReportTools(
+            app.config, app.db, app.scanner, app.okf_graph,
+            recommender=app.recommender, reporter=app.reporter,
+        )
 
         self.scan_workflow = self._build_scan_workflow()
         self.cleanup_workflow = self._build_cleanup_workflow()
@@ -148,10 +151,11 @@ class StewardWorkflows:
         return StepOutput(content={"stats": stats}, success=True)
 
     def _step_render_report(self, step_input):
-        """Step 2 of ReportWorkflow: render a Markdown report file to reports/."""
+        """Step 2 of ReportWorkflow: render Markdown/HTML report files to reports/."""
         extra = step_input.additional_data or {}
         period = extra.get("period", "weekly")
-        rendered = self.report_tools.render_report(period=period)
+        output_format = extra.get("output_format", "markdown")
+        rendered = self.report_tools.render_report(period=period, output_format=output_format)
         return StepOutput(content=rendered, success=True)
 
     def _step_save_report_okf(self, step_input):
