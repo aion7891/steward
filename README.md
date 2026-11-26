@@ -6,7 +6,7 @@ Steward is a local-first, multi-agent AI assistant that runs on your computer to
 - **Dry-run by default** (`safety.dry_run: true`)
 - **Confirmation required** before destructive actions
 - **Recycle-first workflow** with every action logged in SQLite for audit and undo
-- **Local-first privacy** — defaults to local Ollama, SQLite, LanceDB vector store, and an Open Knowledge Format (OKF v0.3) Markdown bundle
+- **Local-first privacy** — defaults to local Ollama, SQLite, persistent ChromaDB vector store, and an Open Knowledge Format (OKF v0.3) Markdown bundle
 
 ---
 
@@ -31,7 +31,7 @@ uv run steward --scan               # Scan configured folders into SQLite
 uv run steward --software           # Discover installed software and file associations
 uv run steward --watch-downloads    # Watch Downloads in real time (Ctrl+C to stop)
 uv run steward --read README.md     # Extract text and metadata from a single document
-uv run steward --index              # Index scanned files into local LanceDB RAG store
+uv run steward --index              # Index scanned files into local ChromaDB RAG store
 uv run steward --search "budget"    # Search indexed document passages semantically
 ```
 
@@ -41,17 +41,19 @@ uv run steward --search "budget"    # Search indexed document passages semantica
 
 Want to see each phase working without touching your personal files? Run these self-contained demo scripts:
 
-- **Phase 1 Demo** ([examples/demo_phase1_foundation.py](examples/demo_phase1_foundation.py)): Config loading, rotating logs, `ModelFactory`, and startup health check.
+- **Phase 1 Demo** ([examples/demo_phase1_foundation.py](examples/demo_phase1_foundation.py)): Config loading, rotating logs, real Agno `ModelFactory` (live Ollama chat + embedding check), and startup health check.
   ```bash
   uv run python examples/demo_phase1_foundation.py
   ```
-- **Phase 2 Demo** ([examples/demo_phase2_scanning.py](examples/demo_phase2_scanning.py)): Isolated sandbox scan with duplicates, large/stale/temp files, sample `.app` bundle, and live Downloads events.
+- **Phase 2 Demo** ([examples/demo_phase2_scanning.py](examples/demo_phase2_scanning.py)): Isolated sandbox scan with incremental 0-hash rescans, duplicates, large/stale/temp files, sample `.app` bundle, and live Downloads events.
   ```bash
   uv run python examples/demo_phase2_scanning.py
   ```
-- **Phase 3 Demo** ([examples/demo_phase3_rag.py](examples/demo_phase3_rag.py)): Generates sample DOCX, XLSX, Markdown, Python, and PNG files, reads them, indexes them into real Agno `Knowledge` + `LanceDb`, and runs semantic search queries offline.
+- **Phase 3 Demo** ([examples/demo_phase3_rag.py](examples/demo_phase3_rag.py)): Generates real PDF, DOCX, XLSX, Markdown, Python, PNG, and a sensitive `.env` file, reads them with privacy guards, indexes them into real Agno `Knowledge` + persistent `ChromaDb` using **real Ollama model embeddings** by default (or pass `--offline` for `HashEmbedder`).
   ```bash
   uv run python examples/demo_phase3_rag.py
+  # Optional offline fallback (no Ollama needed):
+  uv run python examples/demo_phase3_rag.py --offline
   ```
 
 ---

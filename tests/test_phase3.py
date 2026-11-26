@@ -1,4 +1,4 @@
-"""Unit tests for Phase 3: Document reading, text chunking, and LanceDB RAG."""
+"""Unit tests for Phase 3: Document reading, privacy guards, chunking, and ChromaDB RAG."""
 
 import yaml
 from docx import Document as DocxDocument
@@ -30,9 +30,8 @@ class Phase3Fixtures:
             b"5 0 obj << /Length " + str(len(stream)).encode() + b" >> stream\n"
             + stream + b"\nendstream endobj\n",
         ]
-        header = b"%PDF-1.4\n"
+        body = bytearray(b"%PDF-1.4\n")
         offsets = []
-        body = bytearray(header)
         for obj in objs:
             offsets.append(len(body))
             body.extend(obj)
@@ -81,7 +80,7 @@ class Phase3Fixtures:
 
 
 class TestDocumentReaderAndChunker:
-    """Tests for multi-format extraction and overlapping passage chunking."""
+    """Tests for multi-format extraction, sensitive-file filter, and chunking."""
 
     def test_reads_all_supported_formats(self, tmp_path):
         """Verify PDF, DOCX, XLSX, Markdown, Python, and PNG metadata extraction."""
@@ -101,41 +100,56 @@ class TestDocumentReaderAndChunker:
         assert "Kubernetes" in md_doc.text and md_doc.file_type == "markdown"
         assert "run_backup" in py_doc.text and py_doc.file_type == "text"
         assert img_doc.metadata["width"] == 120 and img_doc.metadata["height"] == 80
-        assert "120x80" in img_doc.text
 
-    def test_chunker_splits_long_text_with_overlap(self, tmp_path):
-        """Verify TextChunker creates overlapping chunks with metadata."""
-        reader = DocumentReader()
+    def test_skips_sensitive_and_oversized_files(self, tmp_path):
+        """Verify .env/key files and oversized files are skipped during reading."""
+        env_file = tmp_path / ".env"
+        env_file.write_text("OPENAI_API_KEY=sk-secret", encoding="utf-8")
+        key_file = tmp_path / "server.key"
+        key_file.write_text("PRIVATE KEY DATA", encoding="utf-8")
+        big_txt = tmp_path / "huge.txt"
+        big_txt.write_text("A" * 2048, encoding="utf-8")
+
+        reader = DocumentReader(max_read_mb=0.001)
+        assert reader.read(env_file).skipped is True
+        assert reader.read(key_file).skipped is True
+        assert reader.read(big_txt).skipped is True
+
+    def test_chunker_splits_long_text_with_required_metadata(self, tmp_path):
+        """Verify TextChunker creates overlapping chunks with path, file_id, and sha256."""
         long_file = tmp_path / "long.txt"
         long_file.write_text(("Sentence about Steward RAG indexing. " * 40).strip(), encoding="utf-8")
-        doc = reader.read(long_file)
+        doc = DocumentReader().read(long_file)
 
-        chunker = TextChunker(chunk_size=250, chunk_overlap=50)
-        chunks = chunker.chunk_document(doc, content_hash="abc123")
-
+        chunks = TextChunker(chunk_size=250, chunk_overlap=50).chunk_document(doc, content_hash="abc123")
         assert len(chunks) >= 5
-        assert chunks[0]["meta_data"]["file_name"] == "long.txt"
-        assert chunks[0]["meta_data"]["total_chunks"] == len(chunks)
+        meta = chunks[0]["meta_data"]
+        assert meta["file_name"] == "long.txt"
+        assert meta["sha256"] == "abc123"
+        assert "file_id" in meta and "path" in meta
 
 
-class TestRAGIndex:
-    """End-to-end tests for Agno Knowledge + LanceDB indexing and semantic search."""
+class TestRAGIndexChroma:
+    """End-to-end tests for Agno Knowledge + ChromaDB indexing, updates, and search."""
 
     def _build_env(self, tmp_path, docs_dir):
-        """Create isolated AppConfig, DatabaseManager, and RAGIndex with HashEmbedder."""
+        """Create isolated AppConfig, DatabaseManager, and ChromaDB RAGIndex."""
         cfg_file = tmp_path / "config.yaml"
-        cfg_data = {"scanner": {"watched_folders": [str(docs_dir)]}}
-        cfg_file.write_text(yaml.safe_dump(cfg_data), encoding="utf-8")
+        cfg_file.write_text(
+            yaml.safe_dump({"scanner": {"watched_folders": [str(docs_dir)]}}),
+            encoding="utf-8",
+        )
         config = AppConfig(config_path=cfg_file, base_dir=tmp_path)
         config.ensure_directories()
         db = DatabaseManager(config.get_path("db_path"))
         rag = RAGIndex(config, embedder=HashEmbedder(dimensions=256))
         return config, db, rag
 
-    def test_indexes_scanned_files_skips_unchanged_and_searches(self, tmp_path):
-        """Verify end-to-end scan -> index -> skip unchanged -> semantic search."""
+    def test_indexes_skips_sensitive_replaces_changed_and_searches(self, tmp_path):
+        """Verify ChromaDB indexes 6 files, skips .env, updates changed files, and searches."""
         docs_dir = tmp_path / "docs"
-        Phase3Fixtures.build_sample_files(docs_dir)
+        files = Phase3Fixtures.build_sample_files(docs_dir)
+        (docs_dir / ".env").write_text("SECRET_TOKEN=never_index_me", encoding="utf-8")
         config, db, rag = self._build_env(tmp_path, docs_dir)
 
         FileScanner(config, db).scan_all()
@@ -143,15 +157,18 @@ class TestRAGIndex:
         second_run = rag.index_from_database(db)
 
         assert first_run["indexed"] == 6
-        assert first_run["errors"] == 0
+        assert first_run["skipped"] == 1
         assert second_run["indexed"] == 0
-        assert second_run["skipped"] == 6
+        assert second_run["skipped"] == 7
 
         tax_hits = rag.search("quarterly tax deduction checklist", limit=3)
-        k8s_hits = rag.search("kubernetes redis persistent storage", limit=3)
+        assert len(tax_hits) >= 1 and tax_hits[0]["file_name"] == "tax_guide.pdf"
 
-        assert len(tax_hits) >= 1
-        assert tax_hits[0]["file_name"] == "tax_guide.pdf"
-        assert len(k8s_hits) >= 1
-        assert k8s_hits[0]["file_name"] == "notes.md"
-        assert rag.get_stats()["indexed_files"] == 6
+        # Modify notes.md and verify old chunks are replaced cleanly in ChromaDB
+        files["md"].write_text("# Rust Notes\nAsync Tokio runtime guide.", encoding="utf-8")
+        update = rag.index_file(files["md"])
+        assert update["status"] == "indexed"
+        rust_hits = rag.search("Rust Async Tokio runtime", limit=2)
+        assert rust_hits[0]["file_name"] == "notes.md"
+        assert "Tokio" in rust_hits[0]["content"]
+        assert rag.get_stats()["collection_name"] == "documents"

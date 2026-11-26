@@ -1,4 +1,4 @@
-"""Recursive folder scanner, file categorizer, and anomaly detector."""
+"""Incremental recursive folder scanner, file categorizer, and anomaly detector."""
 
 import hashlib
 import os
@@ -22,25 +22,20 @@ class FileCategorizer:
         "installer": {".dmg", ".pkg", ".exe", ".msi", ".deb", ".rpm", ".appimage"},
         "temporary": {".tmp", ".temp", ".bak", ".swp", ".part", ".crdownload", ".cache"},
     }
-
     DESTINATION_MAP = {
-        "document": "~/Documents/Documents",
-        "spreadsheet": "~/Documents/Spreadsheets",
-        "code": "~/Documents/Code",
-        "image": "~/Pictures/Sorted",
-        "archive": "~/Downloads/Archives",
-        "media": "~/Movies/Sorted",
-        "installer": "~/Downloads/Installers",
-        "temporary": "~/Downloads/Temporary",
+        "document": "~/Documents/Documents", "spreadsheet": "~/Documents/Spreadsheets",
+        "code": "~/Documents/Code", "image": "~/Pictures/Sorted",
+        "archive": "~/Downloads/Archives", "media": "~/Movies/Sorted",
+        "installer": "~/Downloads/Installers", "temporary": "~/Downloads/Temporary",
         "other": "~/Documents/Misc",
     }
 
     def categorize(self, file_path):
         """Return a human-readable category for the given file path."""
         path = Path(file_path)
-        ext = path.suffix.lower()
         if self.is_temp_file(path):
             return "temporary"
+        ext = path.suffix.lower()
         for category, extensions in self.CATEGORY_MAP.items():
             if ext in extensions:
                 return category
@@ -50,22 +45,18 @@ class FileCategorizer:
         """Return True if a file looks like a temporary or partial download file."""
         path = Path(file_path)
         name = path.name.lower()
-        ext = path.suffix.lower()
-        if ext in self.CATEGORY_MAP["temporary"]:
+        if path.suffix.lower() in self.CATEGORY_MAP["temporary"]:
             return True
-        if name.startswith("~$") or name.startswith(".~") or name.endswith("~"):
-            return True
-        return False
+        return name.startswith("~$") or name.startswith(".~") or name.endswith("~")
 
     def suggest_destination(self, file_path):
         """Suggest a destination directory for a newly seen or downloaded file."""
-        category = self.categorize(file_path)
-        raw_target = self.DESTINATION_MAP.get(category, self.DESTINATION_MAP["other"])
+        raw_target = self.DESTINATION_MAP.get(self.categorize(file_path), self.DESTINATION_MAP["other"])
         return str(Path(raw_target).expanduser())
 
 
 class FileScanner:
-    """Scans configured directories and stores file metadata in SQLite."""
+    """Incrementally scans configured folders, hashing only new or changed files."""
 
     HASH_CHUNK_SIZE = 65536
 
@@ -76,111 +67,117 @@ class FileScanner:
         self.logger = logger
         self.categorizer = categorizer or FileCategorizer()
         self.ignored_dirs = set(config.get("scanner.ignored_dirs", []))
-        self.ignored_extensions = {
-            ext.lower() for ext in config.get("scanner.ignored_extensions", [])
-        }
+        self.ignored_extensions = {ext.lower() for ext in config.get("scanner.ignored_extensions", [])}
 
     def scan_all(self, folders=None):
-        """Scan all configured folders and return a summary of findings."""
+        """Incrementally scan configured folders and save a checkpointed summary."""
         target_folders = (
             [Path(f).expanduser().resolve() for f in folders]
-            if folders is not None
-            else self.config.get_watched_folders()
+            if folders is not None else self.config.get_watched_folders()
         )
         started_at = datetime.now(timezone.utc).isoformat()
-        files_seen = 0
-        folders_scanned = 0
-        errors = 0
+        totals = {"folders": 0, "seen": 0, "hashed": 0, "unchanged": 0, "errors": 0}
+        checkpoint = None
 
         for folder in target_folders:
             if not folder.exists() or not folder.is_dir():
-                self._log_warning(f"Skipping missing folder: {folder}")
+                self._log("warning", f"Skipping missing folder: {folder}")
                 continue
-            folders_scanned += 1
-            seen, err = self._scan_folder(folder)
-            files_seen += seen
-            errors += err
+            totals["folders"] += 1
+            stats = self._scan_folder(folder)
+            for key in ("seen", "hashed", "unchanged", "errors"):
+                totals[key] += stats[key]
+            checkpoint = stats["checkpoint"] or checkpoint
 
-        completed_at = datetime.now(timezone.utc).isoformat()
         findings = self.get_cleanup_findings()
         summary = {
-            "started_at": started_at,
-            "completed_at": completed_at,
-            "folders_scanned": folders_scanned,
-            "files_seen": files_seen,
-            "duplicates_found": len(findings["duplicates"]),
-            "large_files_found": len(findings["large_files"]),
-            "stale_files_found": len(findings["stale_files"]),
-            "temp_files_found": len(findings["temp_files"]),
-            "errors": errors,
+            "started_at": started_at, "completed_at": datetime.now(timezone.utc).isoformat(),
+            "status": "completed", "checkpoint_path": checkpoint,
+            "folders_scanned": totals["folders"], "files_seen": totals["seen"],
+            "hashed_files": totals["hashed"], "unchanged_files": totals["unchanged"],
+            "duplicates_found": len(findings["duplicates"]), "large_files_found": len(findings["large_files"]),
+            "stale_files_found": len(findings["stale_files"]), "temp_files_found": len(findings["temp_files"]),
+            "errors": totals["errors"],
         }
         self.db.record_scan_run(summary)
-        self._log_info(
-            f"Scan complete: {files_seen} files across {folders_scanned} folders."
-        )
+        self._log("info", f"Scan complete: {totals['seen']} files ({totals['hashed']} hashed, {totals['unchanged']} unchanged) across {totals['folders']} folder(s).")
         return summary
 
     def _scan_folder(self, root_folder):
-        """Walk one directory tree and upsert each discovered file."""
-        files_seen, errors = 0, 0
+        """Walk one directory tree, skipping hashing for unchanged files."""
+        stats = {"seen": 0, "hashed": 0, "unchanged": 0, "errors": 0, "checkpoint": None}
         for current_root, dir_names, file_names in os.walk(root_folder):
-            dir_names[:] = [d for d in dir_names if d not in self.ignored_dirs]
-            for file_name in file_names:
+            dir_names[:] = sorted(d for d in dir_names if d not in self.ignored_dirs)
+            for file_name in sorted(file_names):
                 file_path = Path(current_root) / file_name
                 if file_path.is_symlink():
                     continue
                 try:
-                    self.db.upsert_file(self._build_file_record(file_path))
-                    files_seen += 1
+                    record, was_hashed = self._build_file_record(file_path)
+                    self.db.upsert_file(record)
+                    stats["seen"] += 1
+                    stats["hashed" if was_hashed else "unchanged"] += 1
+                    stats["checkpoint"] = record["path"]
                 except OSError as exc:
-                    errors += 1
-                    self._log_warning(f"Could not read {file_path}: {exc}")
-        return files_seen, errors
+                    stats["errors"] += 1
+                    self._record_unreadable(file_path)
+                    self._log("warning", f"Unreadable file {file_path}: {exc}")
+        return stats
 
     def _build_file_record(self, file_path):
-        """Extract metadata and content hash for a single file."""
-        stat = file_path.stat()
-        now_iso = datetime.now(timezone.utc).isoformat()
-        ext = file_path.suffix.lower()
-        is_temp = self.categorizer.is_temp_file(file_path) or (
-            ext in self.ignored_extensions
+        """Extract metadata, reusing cached SHA-256 when size and mtime match."""
+        resolved = file_path.resolve()
+        stat = resolved.stat()
+        modified_iso = self._to_iso(stat.st_mtime)
+        existing = self.db.get_file(resolved)
+        unchanged = (
+            existing is not None and existing["size_bytes"] == stat.st_size
+            and existing["modified_at"] == modified_iso and existing.get("status") == "ok"
+            and (stat.st_size == 0 or bool(existing.get("sha256")))
         )
-        return {
-            "path": str(file_path.resolve()),
-            "name": file_path.name,
-            "folder": str(file_path.parent.resolve()),
-            "extension": ext,
-            "category": self.categorizer.categorize(file_path),
-            "size_bytes": stat.st_size,
-            "sha256": self._compute_sha256(file_path) if stat.st_size > 0 else "",
-            "created_at": self._to_iso(stat.st_ctime),
-            "modified_at": self._to_iso(stat.st_mtime),
-            "accessed_at": self._to_iso(stat.st_atime),
-            "is_temp": 1 if is_temp else 0,
-            "last_scanned_at": now_iso,
+        sha256 = existing["sha256"] if unchanged else (self._compute_sha256(resolved) if stat.st_size > 0 else "")
+        was_hashed = (not unchanged) and (stat.st_size > 0)
+        ext = resolved.suffix.lower()
+        is_temp = self.categorizer.is_temp_file(resolved) or (ext in self.ignored_extensions)
+        record = {
+            "path": str(resolved), "name": resolved.name, "folder": str(resolved.parent),
+            "extension": ext, "category": self.categorizer.categorize(resolved),
+            "size_bytes": stat.st_size, "sha256": sha256,
+            "created_at": self._to_iso(stat.st_ctime), "modified_at": modified_iso,
+            "accessed_at": self._to_iso(stat.st_atime), "is_temp": 1 if is_temp else 0,
+            "status": "ok", "last_scanned_at": datetime.now(timezone.utc).isoformat(),
         }
+        return record, was_hashed
+
+    def _record_unreadable(self, file_path):
+        """Mark an unreadable file in SQLite so the scan continues safely."""
+        resolved = file_path.resolve()
+        if self.db.get_file(resolved) is not None:
+            self.db.update_file_status(resolved, "unreadable")
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        self.db.upsert_file({
+            "path": str(resolved), "name": resolved.name, "folder": str(resolved.parent),
+            "extension": resolved.suffix.lower(), "category": self.categorizer.categorize(resolved),
+            "size_bytes": 0, "sha256": "", "created_at": now, "modified_at": now,
+            "accessed_at": now, "is_temp": 0, "status": "unreadable", "last_scanned_at": now,
+        })
 
     def _compute_sha256(self, file_path):
         """Compute the SHA-256 digest of a file using streaming reads."""
         digest = hashlib.sha256()
         with open(file_path, "rb") as handle:
-            while True:
-                chunk = handle.read(self.HASH_CHUNK_SIZE)
-                if not chunk:
-                    break
+            while chunk := handle.read(self.HASH_CHUNK_SIZE):
                 digest.update(chunk)
         return digest.hexdigest()
 
     def get_cleanup_findings(self):
         """Query SQLite for duplicates, large files, stale files, and temp files."""
         min_bytes = int(self.config.get("scanner.large_file_mb", 100)) * 1024 * 1024
-        stale_days = int(self.config.get("scanner.stale_days", 90))
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=stale_days)).isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=int(self.config.get("scanner.stale_days", 90)))).isoformat()
         return {
-            "duplicates": self.db.find_duplicates(),
-            "large_files": self.db.find_large_files(min_bytes),
-            "stale_files": self.db.find_stale_files(cutoff),
-            "temp_files": self.db.find_temp_files(),
+            "duplicates": self.db.find_duplicates(), "large_files": self.db.find_large_files(min_bytes),
+            "stale_files": self.db.find_stale_files(cutoff), "temp_files": self.db.find_temp_files(),
         }
 
     @staticmethod
@@ -188,12 +185,7 @@ class FileScanner:
         """Convert a POSIX timestamp to an ISO-8601 UTC string."""
         return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
 
-    def _log_info(self, message):
-        """Log an info or warning message when a logger is attached."""
+    def _log(self, level, message):
+        """Emit a log message at the requested level when a logger is attached."""
         if self.logger is not None:
-            self.logger.info(message)
-
-    def _log_warning(self, message):
-        """Log a warning message when a logger is attached."""
-        if self.logger is not None:
-            self.logger.warning(message)
+            getattr(self.logger, level)(message)

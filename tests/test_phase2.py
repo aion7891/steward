@@ -72,10 +72,14 @@ class TestScannerAndDatabase:
         config, db = Phase2TestHelper.build_env(tmp_path, watched_folders=[docs_dir])
         scanner = FileScanner(config, db)
         summary = scanner.scan_all()
+        repeat_summary = scanner.scan_all()
         findings = scanner.get_cleanup_findings()
 
         assert summary["folders_scanned"] == 1
         assert summary["files_seen"] == 5
+        assert summary["hashed_files"] == 5
+        assert repeat_summary["hashed_files"] == 0
+        assert repeat_summary["unchanged_files"] == 5
         assert summary["duplicates_found"] == 1
         assert len(findings["duplicates"][0]["files"]) == 2
         assert len(findings["large_files"]) == 1
@@ -165,7 +169,7 @@ class TestDownloadsWatcher:
         captured = []
         config, db = Phase2TestHelper.build_env(tmp_path, downloads_dir=dl_dir)
         watcher = DownloadsWatcher(
-            config, db, watch_dir=dl_dir, on_suggestion=captured.append
+            config, db, watch_dir=dl_dir, on_suggestion=captured.append, debounce_seconds=0.05
         )
 
         watcher.start()

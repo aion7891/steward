@@ -38,12 +38,14 @@ class TextChunker:
                     "name": f"{path.name}#chunk-{idx + 1}",
                     "content": passage,
                     "meta_data": {
+                        "file_id": hashlib.sha256(str(path).encode("utf-8")).hexdigest()[:16],
+                        "path": str(path),
                         "source_path": str(path),
                         "file_name": path.name,
                         "file_type": doc_content.file_type,
                         "chunk_index": idx,
                         "total_chunks": total,
-                        "content_hash": content_hash,
+                        "sha256": content_hash,
                     },
                 }
             )

@@ -7,11 +7,12 @@ Build the local inspection and persistence layer so Steward can scan configured 
 
 ```mermaid
 flowchart TB
-    subgraph FolderScan["1. Folder Scanning (FileScanner)"]
+    subgraph FolderScan["1. Incremental Folder Scanning (FileScanner)"]
         Folders["Watched Folders\n(Documents, Downloads, Desktop)"] --> Walk["os.walk()\nSkip ignored_dirs"]
-        Walk --> Cat[FileCategorizer]
-        Walk --> Hash["Streaming SHA-256\n+ File Stat Metadata"]
-        Cat --> UpsertFile[DatabaseManager.upsert_file]
+        Walk --> Changed{"Size or mtime\nchanged?"}
+        Changed -->|No| Reuse["Reuse Cached SHA-256\n(Hash Nothing)"]
+        Changed -->|Yes| Hash["Streaming SHA-256\n+ File Stat Metadata"]
+        Reuse --> UpsertFile[DatabaseManager.upsert_file]
         Hash --> UpsertFile
         UpsertFile --> Findings["Cleanup Queries\nDuplicates | Large | Stale | Temp"]
     end

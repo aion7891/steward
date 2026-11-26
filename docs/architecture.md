@@ -37,7 +37,7 @@ flowchart TB
 | Store | Technology | Purpose |
 | :--- | :--- | :--- |
 | **Operational Metadata** | SQLite (`data/steward.db`) | Scanned file stats, SHA-256 hashes, scan runs, software inventory, download events, and reversible action logs. |
-| **Raw Passage Search (RAG)** | Local Vector Store + Ollama Embeddings | Chunked raw text from documents for passage-level semantic search. |
+| **Raw Passage Search (RAG)** | Persistent ChromaDB (`documents`) + Ollama Embeddings | Chunked raw text from documents for passage-level semantic search. |
 | **Curated Long-Term Memory** | OKF v0.3 (`knowledge/`) + NetworkX | Distilled summaries, projects, topics, user preferences, learned patterns, and decision history (no secrets or raw sensitive copies). |
 
 ## Build Phases

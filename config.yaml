@@ -3,7 +3,7 @@
 
 app:
   name: "Steward"
-  version: "0.1.0"
+  version: "0.3.0"
   environment: "development"
   log_level: "INFO"
   log_file: "steward.log"
@@ -13,7 +13,7 @@ app:
 paths:
   data_dir: "data"
   db_path: "data/steward.db"
-  vector_store_dir: "vector_store"
+  vector_store_dir: "chroma"
   okf_dir: "knowledge"
   recycle_dir: "data/recycle"
   reports_dir: "reports"
@@ -38,6 +38,7 @@ scanner:
     - ".crdownload"
   large_file_mb: 100
   stale_days: 90
+  debounce_seconds: 0.5
 
 models:
   # Supported providers: ollama, openai, anthropic, gemini
@@ -50,17 +51,34 @@ models:
   embedding_dimensions: 768
 
 rag:
-  table_name: "steward_documents"
+  collection_name: "documents"
   chunk_size: 800
   chunk_overlap: 120
   max_file_chars: 100000
+  max_read_mb: 20
   default_top_k: 5
+  sensitive_patterns:
+    - ".env"
+    - ".env.*"
+    - "*.pem"
+    - "*.key"
+    - "*.p12"
+    - "*.pfx"
+    - "id_rsa*"
+    - "*password*"
+    - "*secret*"
+    - "*credentials*"
 
 safety:
   # Safety defaults: never delete directly and dry-run by default.
   dry_run: true
   require_confirmation: true
   move_to_recycle_first: true
+  protected_paths:
+    - "/System"
+    - "/usr"
+    - "/etc"
+    - "~/Work/Clients"
 
 scheduler:
   scan_interval_minutes: 60
@@ -69,5 +87,5 @@ scheduler:
 
 server:
   host: "127.0.0.1"
-  port: 8000
+  port: 7777
   ui_port: 8501

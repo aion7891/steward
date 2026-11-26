@@ -82,10 +82,11 @@ class StewardApp:
         return "\n".join(lines)
 
     def run_scan(self, folders=None):
-        """Run a folder scan and print a concise findings summary."""
+        """Run an incremental folder scan and print a concise findings summary."""
         summary = self.scanner.scan_all(folders=folders)
         print(
-            f"Scanned {summary['files_seen']} files in {summary['folders_scanned']} folder(s) | "
+            f"Scanned {summary['files_seen']} files ({summary['hashed_files']} hashed, "
+            f"{summary['unchanged_files']} unchanged) in {summary['folders_scanned']} folder(s) | "
             f"duplicates={summary['duplicates_found']}, large={summary['large_files_found']}, "
             f"stale={summary['stale_files_found']}, temp={summary['temp_files_found']}"
         )

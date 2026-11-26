@@ -57,13 +57,18 @@ class TestAppConfig:
             AppConfig(config_path=cfg_file, base_dir=tmp_path)
 
     def test_ensure_directories_creates_runtime_folders(self, tmp_path):
-        """Verify ensure_directories creates all configured workspace folders."""
-        cfg_file = self._write_config(tmp_path, {})
+        """Verify ensure_directories creates folders and checks protected paths."""
+        cfg_file = self._write_config(
+            tmp_path, {"safety": {"protected_paths": [str(tmp_path / "protected")]}}
+        )
         config = AppConfig(config_path=cfg_file, base_dir=tmp_path)
         created = config.ensure_directories()
 
         assert len(created) == 6
         assert all(path.exists() and path.is_dir() for path in created)
+        assert config.get("server.port") == 7777
+        assert config.is_protected_path(tmp_path / "protected" / "secret.pdf") is True
+        assert config.is_protected_path(tmp_path / "other" / "doc.pdf") is False
 
 
 class TestLoggerFactory:

@@ -1,4 +1,4 @@
-"""Real-time Downloads folder watcher and destination recommender."""
+"""Real-time Downloads folder watcher with debouncing and destination suggestions."""
 
 import time
 from pathlib import Path
@@ -18,18 +18,22 @@ class DownloadsEventHandler(FileSystemEventHandler):
         self.watcher = watcher
 
     def on_created(self, event):
-        """Process newly created files in Downloads."""
+        """Process newly created files in Downloads after waiting for size stability."""
         if not event.is_directory:
-            self.watcher.inspect_file(event.src_path, event_type="download_created")
+            self.watcher.inspect_file(
+                event.src_path, event_type="download_created", wait_stable=True
+            )
 
     def on_moved(self, event):
         """Process completed downloads renamed from temporary browser files."""
         if not event.is_directory:
-            self.watcher.inspect_file(event.dest_path, event_type="download_completed")
+            self.watcher.inspect_file(
+                event.dest_path, event_type="download_completed", wait_stable=True
+            )
 
 
 class DownloadsWatcher:
-    """Watches the Downloads folder in real time and suggests destinations."""
+    """Watches the Downloads folder in real time, debounces writes, and suggests paths."""
 
     def __init__(
         self,
@@ -39,8 +43,9 @@ class DownloadsWatcher:
         categorizer=None,
         watch_dir=None,
         on_suggestion=None,
+        debounce_seconds=None,
     ):
-        """Initialize the Downloads watcher with config, database, and callback."""
+        """Initialize the Downloads watcher with config, database, and debounce timer."""
         self.config = config
         self.db = db
         self.logger = logger
@@ -50,16 +55,22 @@ class DownloadsWatcher:
         self.ignored_extensions = {
             ext.lower() for ext in config.get("scanner.ignored_extensions", [])
         }
+        default_debounce = config.get("scanner.debounce_seconds", 0.5)
+        self.debounce_seconds = float(
+            default_debounce if debounce_seconds is None else debounce_seconds
+        )
         self.on_suggestion = on_suggestion
         self.observer = None
 
-    def inspect_file(self, file_path, event_type="download_detected"):
+    def inspect_file(self, file_path, event_type="download_detected", wait_stable=False):
         """Categorize a file, suggest a destination, and log an activity event."""
         path = Path(file_path).resolve()
         if not path.exists() or path.is_dir():
             return None
         if self._should_ignore(path):
             self._log_debug(f"Ignoring in-progress or hidden file: {path.name}")
+            return None
+        if wait_stable and not self._wait_until_stable(path):
             return None
 
         category = self.categorizer.categorize(path)
@@ -84,6 +95,21 @@ class DownloadsWatcher:
         if self.on_suggestion is not None:
             self.on_suggestion(suggestion)
         return suggestion
+
+    def _wait_until_stable(self, path, max_checks=5):
+        """Wait briefly until a newly written download stops growing in size."""
+        if self.debounce_seconds <= 0:
+            return path.exists()
+        previous_size = -1
+        for _ in range(max_checks):
+            if not path.exists():
+                return False
+            current_size = path.stat().st_size
+            if current_size == previous_size:
+                return True
+            previous_size = current_size
+            time.sleep(self.debounce_seconds)
+        return path.exists()
 
     def scan_existing(self):
         """Inspect all files currently sitting in the Downloads folder."""
