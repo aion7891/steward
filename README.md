@@ -37,19 +37,16 @@ uv run streamlit run steward/ui.py
 uv run python -m steward.worker
 ```
 
-### Run Always-On with Docker Compose (4 Services)
+### Run Always-On with Docker Compose (Uses Native Host Ollama)
 ```bash
 # 1. Export host installed apps so the Docker container stays isolated
 uv run python scripts/export_host_inventory.py
 
-# 2. Build and launch ollama, steward-api, steward-worker, and steward-ui
+# 2. Build and launch steward-api, steward-worker, and steward-ui
+#    (connects directly to your running native Ollama via host.docker.internal:11434)
 docker compose up -d --build
 
-# 3. Pull your local Ollama models once
-docker compose exec ollama ollama pull gemma3:4b
-docker compose exec ollama ollama pull nomic-embed-text
-
-# 4. Open http://127.0.0.1:8501 (Streamlit UI) or http://127.0.0.1:7777/steward/health
+# 3. Open http://127.0.0.1:8501 (Streamlit UI) or http://127.0.0.1:7777/steward/health
 ```
 
 ### CLI Reference

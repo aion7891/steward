@@ -138,7 +138,7 @@ class TestWorkerHostInventoryAndDocker:
 
         compose = yaml.safe_load((root / "docker-compose.yml").read_text(encoding="utf-8"))
         services = compose["services"]
-        assert set(services.keys()) == {"ollama", "steward-api", "steward-worker", "steward-ui"}
+        assert set(services.keys()) == {"steward-api", "steward-worker", "steward-ui"}
         for name, svc in services.items():
             assert svc["restart"] == "unless-stopped", f"{name} missing restart policy"
             for port_map in svc.get("ports", []):

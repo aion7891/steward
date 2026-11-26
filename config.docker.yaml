@@ -42,8 +42,8 @@ scanner:
 
 models:
   provider: "ollama"
-  model_id: "gemma3:4b"
-  host: "http://ollama:11434"
+  model_id: "gemma4"
+  host: "http://host.docker.internal:11434"
   temperature: 0.2
   embedding_provider: "ollama"
   embedding_model: "nomic-embed-text"

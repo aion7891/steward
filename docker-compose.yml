@@ -1,17 +1,9 @@
-# Steward Docker Compose configuration (4 services, localhost-only port bindings).
+# Steward Docker Compose configuration (3 services, connecting to native host Ollama).
+# Make sure Ollama is running on your host machine (`ollama serve`).
 # Before starting, optionally export host apps:
 #   uv run python scripts/export_host_inventory.py
 
 services:
-  ollama:
-    image: ollama/ollama:latest
-    container_name: steward-ollama
-    ports:
-      - "127.0.0.1:11434:11434"
-    volumes:
-      - ollama-models:/root/.ollama
-    restart: unless-stopped
-
   steward-api:
     build: .
     container_name: steward-api
@@ -23,7 +15,9 @@ services:
       - STEWARD_CONFIG_PATH=/app/config.docker.yaml
       - STEWARD_API_HOST=0.0.0.0
       - STEWARD_API_PORT=7777
-      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=${DOCKER_OLLAMA_HOST:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:7777:7777"
     volumes:
@@ -35,8 +29,6 @@ services:
       - ./chroma:/app/chroma
       - ./reports:/app/reports
       - ./host-inventory:/app/host-inventory:ro
-    depends_on:
-      - ollama
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:7777/steward/health"]
       interval: 15s
@@ -53,7 +45,9 @@ services:
         required: false
     environment:
       - STEWARD_CONFIG_PATH=/app/config.docker.yaml
-      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=${DOCKER_OLLAMA_HOST:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ${STEWARD_DOCUMENTS_DIR:-~/Documents}:/data/Documents:ro
       - ${STEWARD_DESKTOP_DIR:-~/Desktop}:/data/Desktop:ro
@@ -90,6 +84,3 @@ services:
       steward-api:
         condition: service_healthy
     restart: unless-stopped
-
-volumes:
-  ollama-models:
