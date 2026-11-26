@@ -7,8 +7,10 @@ import yaml
 from agno.agent import Agent
 from agno.os import AgentOS
 from fastapi import Body, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from steward.main import StewardApp
+from steward.web_routes import WebRoutes
 
 
 class StewardAPIServer:
@@ -26,6 +28,12 @@ class StewardAPIServer:
         """Mount custom /steward/* routes onto an Agno AgentOS FastAPI application."""
         base_app = FastAPI(title="Steward API", version=str(self.steward_app.config.get("app.version", "0.9.0")))
         self._register_steward_routes(base_app)
+        self.web_routes = WebRoutes(self.steward_app)
+        self.web_routes.register(base_app)
+        # Only the Vite dev server needs CORS; in Docker nginx serves UI and API from one origin
+        origins = os.getenv("STEWARD_CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173")
+        base_app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in origins.split(",") if o.strip()],
+                                allow_methods=["*"], allow_headers=["*"])
         agent_os = AgentOS(
             id="steward-os",
             name="Steward",
@@ -44,7 +52,9 @@ class StewardAPIServer:
         return agent_os.get_app()
 
     def _register_steward_routes(self, api):
-        """Attach Steward's custom health, scan, chat, actions, reports, and settings routes."""
+        """Attach Steward's custom health, scan and chat routes, then the action/report routes."""
+        self._register_action_routes(api)
+        self._register_settings_routes(api)
 
         @api.get("/steward/health")
         def health():
@@ -65,6 +75,9 @@ class StewardAPIServer:
             if not message:
                 raise HTTPException(status_code=400, detail="'message' is required.")
             return self._answer_chat(message)
+
+    def _register_action_routes(self, api):
+        """Attach the actions, reports, recommendations and settings routes."""
 
         @api.get("/steward/actions")
         def list_actions(status=None, limit=50):
@@ -100,6 +113,9 @@ class StewardAPIServer:
                 period=data.get("period", "weekly"),
                 output_format=data.get("output_format", "markdown"),
             )
+
+    def _register_settings_routes(self, api):
+        """Attach the recommendations and settings routes."""
 
         @api.get("/steward/recommendations")
         def recommendations():

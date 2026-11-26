@@ -16,6 +16,12 @@ services:
       - STEWARD_API_HOST=0.0.0.0
       - STEWARD_API_PORT=7777
       - OLLAMA_HOST=${DOCKER_OLLAMA_HOST:-http://host.docker.internal:11434}
+      # Mac paths behind each mount, so "Scan a folder" accepts normal Mac paths
+      - STEWARD_HOST_HOME=${HOME}
+      - STEWARD_HOST_DOCUMENTS_DIR=${STEWARD_DOCUMENTS_DIR:-${HOME}/Documents}
+      - STEWARD_HOST_DESKTOP_DIR=${STEWARD_DESKTOP_DIR:-${HOME}/Desktop}
+      - STEWARD_HOST_DOWNLOADS_DIR=${STEWARD_DOWNLOADS_DIR:-${HOME}/Downloads}
+      - STEWARD_HOST_EXTRA_DIR=${STEWARD_EXTRA_DIR:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -24,6 +30,8 @@ services:
       - ${STEWARD_DOCUMENTS_DIR:-~/Documents}:/data/Documents:ro
       - ${STEWARD_DESKTOP_DIR:-~/Desktop}:/data/Desktop:ro
       - ${STEWARD_DOWNLOADS_DIR:-~/Downloads}:/data/Downloads
+      # Optional extra folder to scan (read-only); set STEWARD_EXTRA_DIR in .env
+      - ${STEWARD_EXTRA_DIR:-./host-inventory}:/data/Extra:ro
       - ./knowledge:/app/knowledge
       - ./data:/app/data
       - ./chroma:/app/chroma
