@@ -1,0 +1,104 @@
+/* Design tokens: every colour, size and shadow used by the app lives here.
+   Change a value once and the whole UI follows. Dark mode swaps the colours only. */
+
+:root {
+  /* Brand */
+  --color-brand: #4f46e5;
+  --color-brand-hover: #4338ca;
+  --color-brand-soft: #eef2ff;
+  --color-brand-text: #3730a3;
+
+  /* Surfaces and text */
+  --color-bg: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1f3f8;
+  --color-border: #e3e6ee;
+  --color-border-strong: #cdd2de;
+  --color-text: #111827;
+  --color-text-muted: #5b6475;
+  --color-text-faint: #8a93a6;
+
+  /* Status */
+  --color-success: #15803d;
+  --color-success-soft: #e7f6ec;
+  --color-warning: #b45309;
+  --color-warning-soft: #fef4e2;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fdecec;
+  --color-info: #0369a1;
+  --color-info-soft: #e6f3fb;
+
+  /* Charts */
+  --chart-1: #4f46e5;
+  --chart-2: #0ea5e9;
+  --chart-3: #f59e0b;
+  --chart-grid: #e7e9f0;
+
+  /* Typography (system fonts: no downloads, works fully offline) */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  /* Spacing scale (4 px steps) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Shape and depth */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --topbar-height: 60px;
+  --content-max: 1280px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-brand: #818cf8;
+    --color-brand-hover: #a5b4fc;
+    --color-brand-soft: #1e1b4b;
+    --color-brand-text: #c7d2fe;
+
+    --color-bg: #0b0e14;
+    --color-surface: #131720;
+    --color-surface-muted: #1a1f2b;
+    --color-border: #262c3a;
+    --color-border-strong: #343c4e;
+    --color-text: #e8ebf2;
+    --color-text-muted: #a3abbd;
+    --color-text-faint: #717a8f;
+
+    --color-success: #4ade80;
+    --color-success-soft: #0f2a1a;
+    --color-warning: #fbbf24;
+    --color-warning-soft: #2b2010;
+    --color-danger: #f87171;
+    --color-danger-soft: #2d1414;
+    --color-info: #38bdf8;
+    --color-info-soft: #0c2433;
+
+    --chart-1: #818cf8;
+    --chart-2: #38bdf8;
+    --chart-3: #fbbf24;
+    --chart-grid: #232938;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
+  }
+}
