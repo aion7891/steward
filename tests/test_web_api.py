@@ -136,3 +136,33 @@ class TestRunNowAndCleanup:
         assert second["proposals_count"] == 0 and second["already_open"] == 2
         statuses = [a["status"] for a in app.organizer.list_actions()]
         assert statuses == ["proposed", "proposed"]
+
+
+class FakeRun:
+    """Stands in for an Agno run result: content plus a run status."""
+
+    def __init__(self, content, status):
+        self.content = content
+        self.status = status
+
+
+class TestChatStatus:
+    """POST /steward/chat reports model errors and approval pauses honestly."""
+
+    def test_chat_maps_run_status_to_api_status(self, tmp_path, monkeypatch):
+        """ERROR runs become status 'error', PAUSED runs 'paused', COMPLETED runs 'ok' with sources."""
+        from agno.run.base import RunStatus
+
+        _, server, client, _ = WebApiHelper.build_client(tmp_path)
+        cases = [
+            (FakeRun("Failed to connect to Ollama.", RunStatus.error), "error"),
+            (FakeRun("Team run paused. delete_files requires confirmation", RunStatus.paused), "paused"),
+            (FakeRun("Launch is December 15.", RunStatus.completed), "ok"),
+        ]
+        for run, expected in cases:
+            monkeypatch.setattr(server.agents.team, "run", lambda message, run=run: run)
+            body = client.post("/steward/chat", json={"message": "When is the Apollo launch?"}).json()
+            assert body["status"] == expected and body["reply"] == run.content
+            if expected != "ok":
+                assert body["sources"] == []
+        assert client.post("/steward/chat", json={"message": "  "}).status_code == 400

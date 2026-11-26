@@ -9,6 +9,7 @@ import {
   formatNumber,
   formatRelativeTime,
   formatShortDate,
+  friendlySource,
   shortPath,
 } from "./format.js";
 
@@ -46,6 +47,9 @@ describe("small helpers", () => {
     expect(shortPath("/Users/me/Documents/Acme/invoice.pdf")).toBe("…/Documents/Acme/invoice.pdf");
     expect(shortPath("/a/b")).toBe("/a/b");
     expect(baseName("/a/b/c.txt")).toBe("c.txt");
+    expect(friendlySource("files/invoice-q3-9ea16736.md")).toBe("invoice-q3");
+    expect(friendlySource("projects/acme.md")).toBe("acme");
+    expect(friendlySource("budget-2026.xlsx")).toBe("budget-2026.xlsx");
   });
 });
 

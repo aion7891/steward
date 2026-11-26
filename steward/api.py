@@ -4,11 +4,11 @@ import os
 
 import uvicorn
 import yaml
-from agno.agent import Agent
 from agno.os import AgentOS
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from steward.chat_service import ChatService
 from steward.main import StewardApp
 from steward.web_routes import WebRoutes
 
@@ -22,6 +22,7 @@ class StewardAPIServer:
         self.rag_index = rag_index or self.steward_app.get_rag_index()
         self.agents = self.steward_app.get_agents(model=model, rag_index=self.rag_index)
         self.workflows = self.steward_app.get_workflows(rag_index=self.rag_index)
+        self.chat = ChatService(self.steward_app, self.agents, self.rag_index)
         self.fastapi_app = self._build_app()
 
     def _build_app(self):
@@ -74,7 +75,7 @@ class StewardAPIServer:
             message = str((payload or {}).get("message", "")).strip()
             if not message:
                 raise HTTPException(status_code=400, detail="'message' is required.")
-            return self._answer_chat(message)
+            return self.chat.answer(message)
 
     def _register_action_routes(self, api):
         """Attach the actions, reports, recommendations and settings routes."""
@@ -134,24 +135,6 @@ class StewardAPIServer:
         @api.put("/steward/settings")
         def update_settings(payload=Body(...)):
             return self._apply_settings(payload or {})
-
-    def _answer_chat(self, message):
-        """Route a chat query via Agno Team, with OKF+RAG fallback if model lacks tool calling."""
-        okf_hits = self.steward_app.okf_bundle.search_concepts(message, limit=3)
-        rag_hits = self.rag_index.search(message, limit=3) if not okf_hits else []
-        sources = [h["rel_path"] for h in okf_hits] + [h["file_name"] for h in rag_hits]
-        try:
-            reply = self.agents.team.run(message)
-            text = str(getattr(reply, "content", reply))
-            if "does not support tools" in text.lower():
-                context = f"OKF: {[(h['rel_path'], h['frontmatter'].get('description')) for h in okf_hits]}\nRAG: {[(h['file_name'], h['content'][:200]) for h in rag_hits]}"
-                fallback = Agent(model=self.agents.model, markdown=True).run(
-                    f"Answer concisely citing file names or OKF paths.\n{context}\n\nQuestion: {message}"
-                )
-                text = str(getattr(fallback, "content", fallback))
-            return {"status": "ok", "reply": text, "sources": sources}
-        except Exception as exc:
-            return {"status": "error", "reply": f"Model unavailable: {exc}", "sources": sources}
 
     def _apply_settings(self, updates):
         """Update allowed model, dry_run, and folder settings and save config.yaml."""

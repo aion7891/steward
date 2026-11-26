@@ -78,6 +78,15 @@ export function shortPath(path, keep = 3) {
   return `…/${parts.slice(-keep).join("/")}`;
 }
 
+/** Readable source label: "files/invoice-q3-9ea16736.md" -> "invoice-q3" (drops the note id and .md). */
+export function friendlySource(source) {
+  const name = baseName(source);
+  if (!name.endsWith(".md")) {
+    return name;
+  }
+  return name.slice(0, -3).replace(/-[0-9a-f]{8}$/, "");
+}
+
 /** The last part of a path: "/a/b/c.txt" -> "c.txt". */
 export function baseName(path) {
   const parts = String(path || "").split("/").filter(Boolean);
