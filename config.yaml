@@ -1,0 +1,65 @@
+# Steward main configuration file.
+# Copy .env.example to .env for API keys and local overrides.
+
+app:
+  name: "Steward"
+  version: "0.1.0"
+  environment: "development"
+  log_level: "INFO"
+  log_file: "steward.log"
+  log_max_bytes: 5242880
+  log_backup_count: 3
+
+paths:
+  data_dir: "data"
+  db_path: "data/steward.db"
+  vector_store_dir: "vector_store"
+  okf_dir: "knowledge"
+  recycle_dir: "data/recycle"
+  reports_dir: "reports"
+  logs_dir: "data/logs"
+
+scanner:
+  watched_folders:
+    - "~/Documents"
+    - "~/Downloads"
+    - "~/Desktop"
+  downloads_folder: "~/Downloads"
+  ignored_dirs:
+    - ".git"
+    - ".venv"
+    - "venv"
+    - "node_modules"
+    - "__pycache__"
+    - ".DS_Store"
+  ignored_extensions:
+    - ".tmp"
+    - ".part"
+    - ".crdownload"
+  large_file_mb: 100
+  stale_days: 90
+
+models:
+  # Supported providers: ollama, openai, anthropic, gemini
+  provider: "ollama"
+  model_id: "llama3.2"
+  host: "http://localhost:11434"
+  temperature: 0.2
+  embedding_provider: "ollama"
+  embedding_model: "nomic-embed-text"
+
+safety:
+  # Safety defaults: never delete directly and dry-run by default.
+  dry_run: true
+  require_confirmation: true
+  move_to_recycle_first: true
+
+scheduler:
+  scan_interval_minutes: 60
+  cleanup_interval_hours: 24
+  report_day: "sunday"
+
+server:
+  host: "127.0.0.1"
+  port: 8000
+  ui_port: 8501

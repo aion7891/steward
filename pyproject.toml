@@ -1,0 +1,25 @@
+[project]
+name = "steward"
+version = "0.1.0"
+description = "Local-first AI assistant for organizing files, storage, and computer activity."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+steward = "steward.main:main"
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -10,6 +10,7 @@ __pycache__/
 venv/
 .pytest_cache/
 .ruff_cache/
+*.egg-info/
 
 # Local databases, indexes, and personal data
 *.db
@@ -25,3 +26,4 @@ reports/
 .DS_Store
 .vscode/
 .idea/
+project-skill.md
