@@ -117,6 +117,9 @@ class ModelFactory:
         kwargs = {"id": selected_model}
         if selected_provider == "ollama":
             kwargs["host"] = self.config.get("models.host", "http://localhost:11434")
+            kwargs["dimensions"] = int(
+                self.config.get("models.embedding_dimensions", 768)
+            )
         elif api_key:
             kwargs["api_key"] = api_key
 

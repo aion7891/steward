@@ -52,7 +52,9 @@ class AppConfig:
             "temperature": 0.2,
             "embedding_provider": "ollama",
             "embedding_model": "nomic-embed-text",
+            "embedding_dimensions": 768,
         },
+        "rag": {"table_name": "steward_documents", "chunk_size": 800, "chunk_overlap": 120, "max_file_chars": 100000, "default_top_k": 5},
         "safety": {
             "dry_run": True,
             "require_confirmation": True,

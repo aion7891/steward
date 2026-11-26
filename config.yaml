@@ -42,11 +42,19 @@ scanner:
 models:
   # Supported providers: ollama, openai, anthropic, gemini
   provider: "ollama"
-  model_id: "llama3.2"
+  model_id: "gemma3:4b"
   host: "http://localhost:11434"
   temperature: 0.2
   embedding_provider: "ollama"
   embedding_model: "nomic-embed-text"
+  embedding_dimensions: 768
+
+rag:
+  table_name: "steward_documents"
+  chunk_size: 800
+  chunk_overlap: 120
+  max_file_chars: 100000
+  default_top_k: 5
 
 safety:
   # Safety defaults: never delete directly and dry-run by default.

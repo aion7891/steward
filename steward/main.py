@@ -6,34 +6,38 @@ import sys
 from steward.config import AppConfig, ConfigError
 from steward.database import DatabaseManager
 from steward.logger import LoggerFactory
-from steward.models import ModelFactory
+from steward.models import ModelConfigError, ModelFactory
+from steward.rag import RAGIndex
+from steward.reader import DocumentReader
 from steward.scanner import FileScanner
 from steward.software import SoftwareDetector
 from steward.watcher import DownloadsWatcher
 
 
 class StewardApp:
-    """Coordinates configuration, logging, database, scanning, and watchers."""
+    """Coordinates configuration, logging, database, scanning, reader, and RAG."""
 
     def __init__(self, config_path=None, env_path=None, base_dir=None):
         """Load configuration and initialize core Steward services."""
-        self.config = AppConfig(
-            config_path=config_path,
-            env_path=env_path,
-            base_dir=base_dir,
-        )
+        self.config = AppConfig(config_path=config_path, env_path=env_path, base_dir=base_dir)
         self.created_dirs = self.config.ensure_directories()
         self.logger_factory = LoggerFactory(self.config)
         self.logger = self.logger_factory.get_logger("app")
         self.model_factory = ModelFactory(self.config, logger=self.logger)
         self.db = DatabaseManager(self.config.get_path("db_path"), logger=self.logger)
         self.scanner = FileScanner(self.config, self.db, logger=self.logger)
-        self.software_detector = SoftwareDetector(
-            self.config, self.db, logger=self.logger
-        )
-        self.downloads_watcher = DownloadsWatcher(
-            self.config, self.db, logger=self.logger
-        )
+        self.software_detector = SoftwareDetector(self.config, self.db, logger=self.logger)
+        self.downloads_watcher = DownloadsWatcher(self.config, self.db, logger=self.logger)
+        self.reader = DocumentReader(self.config, logger=self.logger)
+        self._rag_index = None
+
+    def get_rag_index(self, embedder=None):
+        """Lazily initialize and return the local Agno Knowledge RAGIndex."""
+        if self._rag_index is None or embedder is not None:
+            self._rag_index = RAGIndex(
+                self.config, logger=self.logger, embedder=embedder, reader=self.reader
+            )
+        return self._rag_index
 
     def health_check(self):
         """Return a structured summary of the current application setup."""
@@ -44,6 +48,7 @@ class StewardApp:
             "environment": self.config.get("app.environment"),
             "config_path": str(self.config.config_path),
             "db_path": str(self.config.get_path("db_path")),
+            "vector_store_dir": str(self.config.get_path("vector_store_dir")),
             "log_level": self.config.get("app.log_level"),
             "directories_ready": all(path.exists() for path in self.created_dirs),
             "watched_folders": [str(p) for p in self.config.get_watched_folders()],
@@ -59,17 +64,17 @@ class StewardApp:
         """Format the health check dictionary into a readable terminal report."""
         status = self.health_check()
         models = status["models"]
-        safety = status["safety"]
         lines = [
             f"{status['app_name']} v{status['version']} ({status['environment']})",
             "-" * 52,
             f"Config file       : {status['config_path']}",
             f"Database          : {status['db_path']}",
+            f"Vector store      : {status['vector_store_dir']}",
             f"Log level         : {status['log_level']}",
             f"Directories ready : {status['directories_ready']}",
             f"Chat model        : {models['chat_provider']} / {models['chat_model']}",
             f"Embedding model   : {models['embedding_provider']} / {models['embedding_model']}",
-            f"Safety dry_run    : {safety['dry_run']}",
+            f"Safety dry_run    : {status['safety']['dry_run']}",
             f"Watched folders   : {len(status['watched_folders'])}",
         ]
         for folder in status["watched_folders"]:
@@ -94,6 +99,40 @@ class StewardApp:
         print(f"Detected {len(apps)} apps (recent={recent}, rarely_used={rare})")
         return apps
 
+    def run_read(self, file_path):
+        """Read a single document and print its extracted metadata and preview."""
+        doc = self.reader.read(file_path)
+        if doc.error:
+            print(f"Could not read {file_path}: {doc.error}", file=sys.stderr)
+            return doc
+        print(f"File: {doc.path} | Type: {doc.file_type} | Chars: {doc.char_count}")
+        print(f"Metadata: {doc.metadata}")
+        print("--- Preview ---")
+        print(doc.text[:400])
+        return doc
+
+    def run_index(self, force=False):
+        """Index scanned SQLite files into the local LanceDB RAG store."""
+        rag = self.get_rag_index()
+        summary = rag.index_from_database(self.db, force=force)
+        print(
+            f"RAG index complete: indexed={summary['indexed']}, skipped={summary['skipped']}, "
+            f"empty={summary['empty']}, errors={summary['errors']}, chunks={summary['total_chunks']}"
+        )
+        return summary
+
+    def run_search(self, query, limit=5):
+        """Search indexed passages and print ranked snippets."""
+        rag = self.get_rag_index()
+        hits = rag.search(query, limit=limit)
+        if not hits:
+            print("No matching passages found.")
+            return hits
+        for idx, hit in enumerate(hits, start=1):
+            snippet = hit["content"].replace("\n", " ")[:180]
+            print(f"{idx}. [{hit['file_type']}] {hit['file_name']} -> {snippet}")
+        return hits
+
     def run(self):
         """Start the application bootstrap and print its status summary."""
         self.logger.info("Starting Steward status check.")
@@ -110,31 +149,14 @@ class StewardCLI:
             prog="steward",
             description="Steward - local-first AI assistant for computer organization.",
         )
-        self.parser.add_argument(
-            "--config",
-            default=None,
-            help="Path to a YAML configuration file (defaults to config.yaml).",
-        )
-        self.parser.add_argument(
-            "--check",
-            action="store_true",
-            help="Run a startup configuration and directory health check.",
-        )
-        self.parser.add_argument(
-            "--scan",
-            action="store_true",
-            help="Scan configured folders and store metadata in SQLite.",
-        )
-        self.parser.add_argument(
-            "--software",
-            action="store_true",
-            help="Detect installed software and file type associations.",
-        )
-        self.parser.add_argument(
-            "--watch-downloads",
-            action="store_true",
-            help="Watch the Downloads folder in real time until Ctrl+C.",
-        )
+        self.parser.add_argument("--config", default=None, help="Path to config.yaml.")
+        self.parser.add_argument("--check", action="store_true", help="Run health check.")
+        self.parser.add_argument("--scan", action="store_true", help="Scan folders into SQLite.")
+        self.parser.add_argument("--software", action="store_true", help="Detect installed apps.")
+        self.parser.add_argument("--watch-downloads", action="store_true", help="Watch Downloads.")
+        self.parser.add_argument("--read", default=None, help="Extract text/metadata from a file.")
+        self.parser.add_argument("--index", action="store_true", help="Index scanned files into RAG.")
+        self.parser.add_argument("--search", default=None, help="Search indexed document passages.")
 
     def execute(self, argv=None):
         """Parse CLI arguments, initialize StewardApp, and return exit code."""
@@ -150,16 +172,24 @@ class StewardCLI:
             if args.watch_downloads:
                 app.downloads_watcher.run_forever()
                 return 0
+            if args.read:
+                app.run_read(args.read)
+                return 0
+            if args.index:
+                app.run_index()
+                return 0
+            if args.search:
+                app.run_search(args.search)
+                return 0
             return app.run()
-        except (ConfigError, FileNotFoundError) as exc:
+        except (ConfigError, ModelConfigError, FileNotFoundError) as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 1
 
 
 def main(argv=None):
     """Entry point for running Steward via 'uv run steward'."""
-    cli = StewardCLI()
-    return cli.execute(argv)
+    return StewardCLI().execute(argv)
 
 
 if __name__ == "__main__":

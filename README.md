@@ -6,7 +6,7 @@ Steward is a local-first, multi-agent AI assistant that runs on your computer to
 - **Dry-run by default** (`safety.dry_run: true`)
 - **Confirmation required** before destructive actions
 - **Recycle-first workflow** with every action logged in SQLite for audit and undo
-- **Local-first privacy** — defaults to local Ollama, SQLite, local vector store, and an Open Knowledge Format (OKF v0.3) Markdown bundle
+- **Local-first privacy** — defaults to local Ollama, SQLite, LanceDB vector store, and an Open Knowledge Format (OKF v0.3) Markdown bundle
 
 ---
 
@@ -24,27 +24,34 @@ uv run steward --check
 uv run pytest -v
 ```
 
-### Run CLI Commands (Phases 1–2)
+### Run CLI Commands (Phases 1–3)
 ```bash
-uv run steward --check            # Verify config, directories, and model settings
-uv run steward --scan             # Scan configured folders into SQLite
-uv run steward --software         # Discover installed software and file associations
-uv run steward --watch-downloads  # Watch Downloads in real time (Ctrl+C to stop)
+uv run steward --check              # Verify config, directories, and model settings
+uv run steward --scan               # Scan configured folders into SQLite
+uv run steward --software           # Discover installed software and file associations
+uv run steward --watch-downloads    # Watch Downloads in real time (Ctrl+C to stop)
+uv run steward --read README.md     # Extract text and metadata from a single document
+uv run steward --index              # Index scanned files into local LanceDB RAG store
+uv run steward --search "budget"    # Search indexed document passages semantically
 ```
 
 ---
 
 ## Manual Walkthrough Scripts (`examples/`)
 
-Want to see each phase working without touching your personal files? Run the self-contained demo scripts:
+Want to see each phase working without touching your personal files? Run these self-contained demo scripts:
 
-- **Phase 1 Demo** ([examples/demo_phase1_foundation.py](examples/demo_phase1_foundation.py)): Loads config, writes a rotating log entry, exercises `ModelFactory`, and prints a health check.
+- **Phase 1 Demo** ([examples/demo_phase1_foundation.py](examples/demo_phase1_foundation.py)): Config loading, rotating logs, `ModelFactory`, and startup health check.
   ```bash
   uv run python examples/demo_phase1_foundation.py
   ```
-- **Phase 2 Demo** ([examples/demo_phase2_scanning.py](examples/demo_phase2_scanning.py)): Creates a safe sandbox inside `data/demo_phase2/` with sample duplicates, large/stale/temp files, a sample `.app` bundle, and live Downloads events.
+- **Phase 2 Demo** ([examples/demo_phase2_scanning.py](examples/demo_phase2_scanning.py)): Isolated sandbox scan with duplicates, large/stale/temp files, sample `.app` bundle, and live Downloads events.
   ```bash
   uv run python examples/demo_phase2_scanning.py
+  ```
+- **Phase 3 Demo** ([examples/demo_phase3_rag.py](examples/demo_phase3_rag.py)): Generates sample DOCX, XLSX, Markdown, Python, and PNG files, reads them, indexes them into real Agno `Knowledge` + `LanceDb`, and runs semantic search queries offline.
+  ```bash
+  uv run python examples/demo_phase3_rag.py
   ```
 
 ---
@@ -56,8 +63,8 @@ Documentation is organized by architecture and phase, with Mermaid flow diagrams
 - [Architecture Overview & Roadmap](docs/architecture.md)
 - [Phase 1: Foundation and Config](docs/phase-1-foundation.md) — **Done**
 - [Phase 2: File Scanning and Database](docs/phase-2-scanning.md) — **Done**
-- Phase 3: Document reading and RAG — *Next*
-- Phase 4: OKF knowledge bundle, graph, and memory — *Planned*
+- [Phase 3: Document Reading and RAG](docs/phase-3-rag.md) — **Done**
+- Phase 4: OKF knowledge bundle, graph, and memory — *Next*
 - Phase 5: Agno tools, agents, team, and workflows — *Planned*
 - Phase 6: Organizing and cleanup actions — *Planned*
 - Phase 7: Recommendations and reports — *Planned*
@@ -76,10 +83,12 @@ project-steward/
 ├── docs/                     # Distributed phase docs & Mermaid flow diagrams
 │   ├── architecture.md
 │   ├── phase-1-foundation.md
-│   └── phase-2-scanning.md
+│   ├── phase-2-scanning.md
+│   └── phase-3-rag.md
 ├── examples/                 # Simple runnable manual demo scripts
 │   ├── demo_phase1_foundation.py
-│   └── demo_phase2_scanning.py
+│   ├── demo_phase2_scanning.py
+│   └── demo_phase3_rag.py
 ├── steward/                  # Core Python package (100–200 lines/script, no type hints)
 │   ├── config.py
 │   ├── logger.py
@@ -88,8 +97,12 @@ project-steward/
 │   ├── scanner.py
 │   ├── software.py
 │   ├── watcher.py
+│   ├── reader.py
+│   ├── chunker.py
+│   ├── rag.py
 │   └── main.py
 └── tests/                    # Automated pytest suite
     ├── test_foundation.py
-    └── test_phase2.py
+    ├── test_phase2.py
+    └── test_phase3.py
 ```

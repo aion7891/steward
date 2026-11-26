@@ -46,7 +46,7 @@ flowchart TB
 | :---: | :--- | :---: | :--- | :--- |
 | **1** | Foundation and config | Done | [phase-1-foundation.md](phase-1-foundation.md) | [demo_phase1_foundation.py](../examples/demo_phase1_foundation.py) |
 | **2** | File scanning and database | Done | [phase-2-scanning.md](phase-2-scanning.md) | [demo_phase2_scanning.py](../examples/demo_phase2_scanning.py) |
-| **3** | Document reading and RAG | Planned | — | — |
+| **3** | Document reading and RAG | Done | [phase-3-rag.md](phase-3-rag.md) | [demo_phase3_rag.py](../examples/demo_phase3_rag.py) |
 | **4** | OKF knowledge bundle, graph, and memory | Planned | — | — |
 | **5** | Agno tools, agents, team, and workflows | Planned | — | — |
 | **6** | Organizing and cleanup actions | Planned | — | — |
