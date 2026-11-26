@@ -3,7 +3,7 @@
 
 app:
   name: "Steward"
-  version: "0.5.0"
+  version: "0.6.0"
   environment: "development"
   log_level: "INFO"
   log_file: "steward.log"
@@ -74,6 +74,7 @@ safety:
   dry_run: true
   require_confirmation: true
   move_to_recycle_first: true
+  recycle_retention_days: 30
   protected_paths:
     - "/System"
     - "/usr"

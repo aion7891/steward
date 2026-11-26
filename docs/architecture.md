@@ -49,7 +49,7 @@ flowchart TB
 | **3** | Document reading and RAG | Done | [phase-3-rag.md](phase-3-rag.md) | [demo_phase3_rag.py](../examples/demo_phase3_rag.py) |
 | **4** | OKF knowledge bundle, graph, and memory | Done | [phase-4-okf.md](phase-4-okf.md) | [demo_phase4_okf.py](../examples/demo_phase4_okf.py) |
 | **5** | Agno tools, agents, team, and workflows | Done | [phase-5-agents.md](phase-5-agents.md) | [demo_phase5_agents.py](../examples/demo_phase5_agents.py) |
-| **6** | Organizing and cleanup actions | Planned | — | — |
+| **6** | Organizing and cleanup actions | Done | [phase-6-organizing.md](phase-6-organizing.md) | [demo_phase6_organizing.py](../examples/demo_phase6_organizing.py) |
 | **7** | Recommendations and reports | Planned | — | — |
 | **8** | Chat UI (AgentOS plus local Streamlit UI) | Planned | — | — |
 | **9** | Docker deployment | Planned | — | — |

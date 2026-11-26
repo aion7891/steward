@@ -40,6 +40,7 @@ uv run steward --workflow scan      # Run deterministic Agno ScanWorkflow (scan 
 uv run steward --workflow cleanup   # Run CleanupWorkflow (find -> dry-run proposals -> OKF)
 uv run steward --workflow report    # Run ReportWorkflow (stats -> report -> OKF concept)
 uv run steward --chat "Summarize my recent files"  # Chat with the Agno Orchestrator Team
+uv run steward --undo 1             # Undo a completed move, ZIP archive, or recycle action by ID
 ```
 
 ---
@@ -68,6 +69,10 @@ Run these self-contained demo scripts to see each phase working step by step:
   ```bash
   uv run python examples/demo_phase5_agents.py
   ```
+- **Phase 6 Demo** ([examples/demo_phase6_organizing.py](examples/demo_phase6_organizing.py)): Demonstrates organizing by type/date, approval gating, dry-run safety, verified ZIP archiving + undo, recycle-bin delete + undo, retention purge confirmation, and protected-path blocking inside `data/demo_phase6/`.
+  ```bash
+  uv run python examples/demo_phase6_organizing.py
+  ```
 
 ---
 
@@ -81,7 +86,7 @@ Documentation is organized by architecture and phase, with Mermaid flow diagrams
 - [Phase 3: Document Reading and RAG](docs/phase-3-rag.md) — **Done**
 - [Phase 4: OKF Knowledge Bundle, Graph, and Memory](docs/phase-4-okf.md) — **Done**
 - [Phase 5: Agno Tools, Agents, Team, and Workflows](docs/phase-5-agents.md) — **Done**
-- Phase 6: Organizing and cleanup actions — *Next*
-- Phase 7: Recommendations and reports — *Planned*
+- [Phase 6: Organizing and Cleanup Actions](docs/phase-6-organizing.md) — **Done**
+- Phase 7: Recommendations and reports — *Next*
 - Phase 8: Chat UI (AgentOS + Streamlit) — *Planned*
 - Phase 9: Docker deployment — *Planned*

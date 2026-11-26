@@ -53,6 +53,7 @@ class AppConfig:
         },
         "safety": {
             "dry_run": True, "require_confirmation": True, "move_to_recycle_first": True,
+            "recycle_retention_days": 30,
             "protected_paths": ["/System", "/usr", "/etc", "~/Work/Clients"],
         },
         "scheduler": {

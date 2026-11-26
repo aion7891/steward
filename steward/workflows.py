@@ -20,7 +20,7 @@ class StewardWorkflows:
             db_file=str(app.config.get_path("data_dir") / "agno_sessions.db")
         )
         self.organizer_tools = OrganizerTools(
-            app.config, app.db, memory_manager=app.memory_manager, logger=self.logger
+            app.config, app.db, memory_manager=app.memory_manager, logger=self.logger, organizer=app.organizer
         )
         self.report_tools = ReportTools(app.config, app.db, app.scanner, app.okf_graph)
 

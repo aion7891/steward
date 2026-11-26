@@ -12,6 +12,7 @@ from steward.memory import MemoryManager
 from steward.models import ModelConfigError, ModelFactory
 from steward.okf_bundle import OKFBundle
 from steward.okf_graph import OKFGraph
+from steward.organizer import FileOrganizer
 from steward.rag import RAGIndex
 from steward.reader import DocumentReader
 from steward.scanner import FileScanner
@@ -21,7 +22,7 @@ from steward.workflows import StewardWorkflows
 
 
 class StewardApp:
-    """Coordinates config, SQLite, scanning, RAG, OKF, Agno agents, and workflows."""
+    """Coordinates config, SQLite, scanning, RAG, OKF, organizer, agents, and workflows."""
 
     def __init__(self, config_path=None, env_path=None, base_dir=None):
         """Load configuration and initialize core Steward services."""
@@ -37,9 +38,9 @@ class StewardApp:
         self.okf_bundle = OKFBundle(self.config.get_path("okf_dir"), logger=self.logger)
         self.okf_graph = OKFGraph(self.okf_bundle, logger=self.logger)
         self.memory_manager = MemoryManager(self.okf_bundle, self.okf_graph, logger=self.logger)
-        self.knowledge_builder = KnowledgeBuilder(
-            self.okf_bundle, self.okf_graph, reader=self.reader, logger=self.logger
-        )
+        self.knowledge_builder = KnowledgeBuilder(self.okf_bundle, self.okf_graph, reader=self.reader, logger=self.logger)
+        self.organizer = FileOrganizer(self.config, self.db, memory_manager=self.memory_manager, logger=self.logger)
+        self.recycle_manager = self.organizer.recycle
         self._rag_index, self._agents, self._workflows = None, None, None
 
     def get_rag_index(self, embedder=None):
@@ -149,9 +150,9 @@ class StewardApp:
 
     def run_workflow(self, name):
         """Run one of Steward's deterministic Agno Workflows (scan, cleanup, report)."""
-        result = self.get_workflows().run_workflow(name)
-        print(f"Workflow '{name}' finished: {getattr(result, 'content', result)}")
-        return result
+        res = self.get_workflows().run_workflow(name)
+        print(f"Workflow '{name}' finished: {getattr(res, 'content', res)}")
+        return res
 
     def run_chat(self, message):
         """Send a question to the Agno Orchestrator Team and print its response."""
@@ -181,6 +182,7 @@ class StewardCLI:
         ("--okf-search", {"default": None, "help": "Search curated OKF concepts."}),
         ("--workflow", {"choices": ["scan", "cleanup", "report"], "help": "Run an Agno workflow."}),
         ("--chat", {"default": None, "help": "Ask the Agno Orchestrator Team a question."}),
+        ("--undo", {"type": int, "default": None, "help": "Undo a completed file action by ID."}),
     )
 
     def __init__(self):
@@ -203,6 +205,7 @@ class StewardCLI:
                 (args.okf_search, lambda: app.run_okf_search(args.okf_search)),
                 (args.workflow, lambda: app.run_workflow(args.workflow)),
                 (args.chat, lambda: app.run_chat(args.chat)),
+                (args.undo is not None, lambda: print(app.organizer.undo_action(args.undo))),
             )
             for enabled, func in dispatch:
                 if enabled:

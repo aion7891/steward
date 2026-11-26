@@ -31,7 +31,7 @@ class StewardAgents:
         self.software_tools = SoftwareTools(app.software_detector, app.db)
         self.okf_tools = OKFTools(app.okf_bundle, app.okf_graph)
         self.organizer_tools = OrganizerTools(
-            app.config, app.db, memory_manager=app.memory_manager, logger=app.logger
+            app.config, app.db, memory_manager=app.memory_manager, logger=app.logger, organizer=app.organizer
         )
         self.report_tools = ReportTools(app.config, app.db, app.scanner, app.okf_graph)
 

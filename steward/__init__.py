@@ -10,8 +10,10 @@ from steward.memory import MemoryManager
 from steward.models import ModelConfigError, ModelFactory
 from steward.okf_bundle import OKFBundle, OKFValidationError
 from steward.okf_graph import OKFGraph
+from steward.organizer import FileOrganizer
 from steward.rag import RAGIndex
 from steward.reader import DocumentContent, DocumentReader
+from steward.recycle import RecycleManager
 from steward.scanner import FileCategorizer, FileScanner
 from steward.software import SoftwareDetector
 from steward.tools import (
@@ -25,14 +27,14 @@ from steward.tools import (
 from steward.watcher import DownloadsWatcher
 from steward.workflows import StewardWorkflows
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 __all__ = [
     "AppConfig", "ConfigError", "DatabaseManager", "DocumentContent", "DocumentReader",
-    "DocumentReaderTools", "DownloadsWatcher", "FileCategorizer", "FileScanner",
-    "FileScannerTools", "HashEmbedder", "KnowledgeBuilder", "LoggerFactory",
-    "MemoryManager", "ModelConfigError", "ModelFactory", "OKFBundle", "OKFGraph",
-    "OKFTools", "OKFValidationError", "OrganizerTools", "RAGIndex", "ReportTools",
-    "SoftwareDetector", "SoftwareTools", "StewardAgents", "StewardWorkflows",
-    "TextChunker", "__version__",
+    "DocumentReaderTools", "DownloadsWatcher", "FileCategorizer", "FileOrganizer",
+    "FileScanner", "FileScannerTools", "HashEmbedder", "KnowledgeBuilder",
+    "LoggerFactory", "MemoryManager", "ModelConfigError", "ModelFactory", "OKFBundle",
+    "OKFGraph", "OKFTools", "OKFValidationError", "OrganizerTools", "RAGIndex",
+    "RecycleManager", "ReportTools", "SoftwareDetector", "SoftwareTools",
+    "StewardAgents", "StewardWorkflows", "TextChunker", "__version__",
 ]
