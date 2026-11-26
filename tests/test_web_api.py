@@ -76,6 +76,8 @@ class TestDashboardRoute:
         today = datetime.now(timezone.utc).date().isoformat()
         assert body["daily"][-1]["date"] == today and body["daily"][-1]["scans"] == 1
         assert body["status"]["files_tracked"] == 4 and body["status"]["scans_today"] == 1
+        # Exact byte counts let the UI show small files as "7 B" instead of "0 B"
+        assert body["status"]["total_size_bytes"] == sum(c["size_bytes"] for c in body["categories"]) > 0
         assert body["status"]["pending_actions"] == 1
         assert body["todo"][0]["size_bytes"] == len("scratch")
         assert {s["kind"] for s in body["suggestions"]} >= {"deduplicate", "clean_temp"}

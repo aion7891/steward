@@ -7,6 +7,7 @@
   --color-brand-hover: #4338ca;
   --color-brand-soft: #eef2ff;
   --color-brand-text: #3730a3;
+  --color-on-brand: #ffffff;
 
   /* Surfaces and text */
   --color-bg: #f6f7fb;
@@ -74,6 +75,7 @@
     --color-brand-hover: #a5b4fc;
     --color-brand-soft: #1e1b4b;
     --color-brand-text: #c7d2fe;
+    --color-on-brand: #0b0e14;
 
     --color-bg: #0b0e14;
     --color-surface: #131720;

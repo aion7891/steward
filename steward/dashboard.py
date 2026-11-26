@@ -75,6 +75,7 @@ class DashboardService:
             "last_scan_at": last["at"],
             "files_tracked": files["n"],
             "total_size_mb": round(files["b"] / MB, 2),
+            "total_size_bytes": files["b"],
             "files_indexed": self._indexed_count(),
             "scans_today": runs_today["n"],
             "files_checked_today": runs_today["seen"],
@@ -129,7 +130,8 @@ class DashboardService:
         rows = self.db._query_all(
             "SELECT COALESCE(category, 'other') AS category, COUNT(*) AS count, "
             "COALESCE(SUM(size_bytes), 0) AS bytes FROM files GROUP BY category ORDER BY bytes DESC")
-        return [{"category": r["category"], "count": r["count"], "size_mb": round(r["bytes"] / MB, 2)} for r in rows]
+        return [{"category": r["category"], "count": r["count"], "size_bytes": r["bytes"],
+                 "size_mb": round(r["bytes"] / MB, 2)} for r in rows]
 
     def _patterns(self, limit=6):
         """Learned work patterns from OKF memory (title + description)."""
