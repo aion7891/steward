@@ -99,6 +99,12 @@ Every phase includes a runnable, self-contained demo script:
 
 ## Documentation (`docs/`)
 
+- **[User Guide](docs/user-guide/README.md)**: every page of the web app with screenshots, for non-technical readers
+- **[Developer Guide](docs/developer-guide/README.md)**: architecture, API reference, frontend, Docker & config, testing
+- **[System review](review-system/README.md)**: independent review with the status of every issue ([what's new in 0.10.0](review-system/11-whats-new-0.10.md))
+
+Phase-by-phase build notes:
+
 All phase guides include Mermaid flow diagrams, change tables, and run instructions:
 
 - [Architecture Overview & Roadmap](docs/architecture.md)

@@ -114,9 +114,16 @@ light/dark mode). Plain JavaScript (no TypeScript) to match the project's no-typ
 - Frontend: `frontend/src/**/*.test.js` (Vitest)
 - Manually verified in headless Chrome against the demo folder and through the Docker/nginx stack.
 
+## Later additions in 0.10.0
+
+Added after this page was first written: **Reports** and **Settings** pages, **approve from chat**,
+real chat sources, Mac paths in every response, local-time dashboard days, saved folder-scan
+history, and dry-run enforced inside the file tools. See the
+[User Guide](user-guide/README.md) and the [Developer Guide](developer-guide/README.md).
+
 ## Known limitations (next steps)
 
-- Chat cannot approve paused actions yet (review #2).
-- Results show container paths (`/data/...`) in a few places instead of Mac paths.
-- Chat "sources" come from a separate keyword search (review #14).
-- Folder-scan job history lives in API memory and resets when the API restarts.
+- Deleted/moved files still have rows in SQLite, the search index and the knowledge notes (review #4).
+- Identical files share one search entry (review #5); knowledge-note summaries are raw previews (#6).
+- The Downloads watcher logs suggestions but doesn't create proposals yet (#7).
+- The API and the worker both write the same databases (#12).

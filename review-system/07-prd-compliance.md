@@ -1,5 +1,20 @@
 # 7. PRD compliance: requirement by requirement
 
+> **Update (0.10.0, 27 Nov 2026):** these rows changed since the review:
+>
+> | Item | Before | Now |
+> |:--|:-:|:-:|
+> | F5 Chat answers citing the file | 🟡 | ✅ sources are the files/notes actually used; routing 7/8 |
+> | F6 Changes only after the user confirms | 🟡 | ✅ cleanup proposes only; chat approval card; dry-run enforced in the tool |
+> | NFR Safety | 🟡 | ✅ |
+> | Local chat UI: chat, confirmation cards, reports, settings | 🟡 | ✅ new web app with all four |
+> | CleanupWorkflow: wait for confirmation, then act | ❌ | 🟡 waits for the user (To-do); acting happens via Approve/Run now, not inside the workflow |
+> | UI status panel: last scan, files indexed, pending, errors in last day | 🟡 | ✅ Dashboard cards |
+> | Settings via config (portability) | ✅ | ✅ plus safe UI overrides with `.env` locks |
+> | Phase 8 "a user approves an action from the chat" | ❌ | ✅ |
+>
+> Still open: F2 AI summaries, F4 Downloads → proposal, crash-resume, Ollama retry, health route model check.
+
 Legend: ✅ done · 🟡 partly done · ❌ missing · 🔀 done differently on purpose
 
 Sources: **PRD** = `Steward-System-Design.pdf` · **SKILL** = `project-skill.md`
