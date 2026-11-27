@@ -19,13 +19,16 @@ class ChatApprovals:
         "move_file": "Move {count} file(s) to {target}",
     }
 
-    def __init__(self, config):
+    def __init__(self, config, preflight=None):
         """Create an empty, thread-safe store.
 
         Args:
             config: AppConfig, used to show whether dry-run will keep the step a preview.
+            preflight: optional function(tool_name, args) returning why a step cannot work
+                (for example a read-only folder), or None when it can.
         """
         self.config = config
+        self.preflight = preflight
         self.pending = {}
         self.lock = threading.Lock()
 
@@ -55,6 +58,22 @@ class ChatApprovals:
     def open_requirements(self, run):
         """Return the steps in a run that still need a yes/no."""
         return [req for req in (getattr(run, "requirements", None) or []) if req.needs_confirmation]
+
+    def reject_impossible(self, run):
+        """Decline steps that are bound to fail, before the user is asked; return the reasons.
+
+        Args:
+            run: the paused Agno run.
+        """
+        reasons = []
+        for req in self.open_requirements(run) if self.preflight else []:
+            tool = req.tool_execution
+            problem = self.preflight(tool.tool_name, dict(getattr(tool, "tool_args", None) or {}))
+            if problem:
+                req.reject(f"Steward could not do this: {problem}")
+                if problem not in reasons:
+                    reasons.append(problem)
+        return reasons
 
     def describe(self, run):
         """Return one plain-language card entry per step waiting for approval.

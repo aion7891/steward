@@ -3,6 +3,7 @@
 from agno.agent import Agent
 
 from steward.chat_approvals import ChatApprovals
+from steward.chat_notices import ChatNotices
 from steward.chat_sources import ChatSources
 
 
@@ -31,7 +32,11 @@ class ChatService:
         self.rag_index = rag_index
         self.mapper = mapper
         self.sources = ChatSources()
-        self.approvals = ChatApprovals(steward_app.config)
+        self.notices = ChatNotices()
+        # Steps that cannot work (missing path, read-only folder) are declined before asking
+        self.approvals = ChatApprovals(
+            steward_app.config, preflight=lambda name, args: self.agents.organizer_tools.preflight(name, args)
+        )
 
     def answer(self, message, session_id=None):
         """Answer one question inside a conversation.
@@ -64,8 +69,16 @@ class ChatService:
             return self.agents.team.continue_run(run_response=paused, requirements=paused.requirements), None
         return self._respond(run, getattr(paused, "session_id", None))
 
-    def _respond(self, run, session_id):
-        """Call run() and turn its result into the chat reply format (never raises)."""
+    def _respond(self, run, session_id, notes=None, auto_continues=0):
+        """Call run() and turn its result into the chat reply format (never raises).
+
+        Args:
+            run: function returning (agno run, fallback sources or None).
+            session_id: the conversation id.
+            notes: Steward's own notes collected so far (shown under the answer).
+            auto_continues: how often a run was resumed without asking (limit 2).
+        """
+        notes = list(notes or [])
         try:
             reply, fallback_sources = run()
         except Exception as exc:
@@ -78,14 +91,31 @@ class ChatService:
         if status == "ERROR":
             result.update(status="error", reply=text or "The model failed to answer.")
         elif status == "PAUSED" and self.approvals.open_requirements(reply):
-            steps = self.approvals.describe(reply)
-            result.update(status="approval", run_id=self.approvals.add(reply), approvals=steps,
-                          reply="Steward wants to change files and needs your approval.")
+            return self._paused(reply, result, notes, auto_continues)
         elif status == "PAUSED":
             result.update(status="error", reply="The AI paused for input Steward cannot collect in chat yet.")
         else:
             sources = fallback_sources if fallback_sources is not None else self.sources.collect(reply)
+            notes += [note for note in self.notices.collect(reply) if note not in notes]
+            if notes:
+                text = f"{text}\n\n{ChatNotices.as_markdown(notes)}".strip()
             result.update(status="ok", reply=text, sources=sources)
+        return self._show(result)
+
+    def _paused(self, reply, result, notes, auto_continues):
+        """Show the approval card, after declining the steps that cannot work."""
+        notes = notes + [n for n in self.approvals.reject_impossible(reply) if n not in notes]
+        if not self.approvals.open_requirements(reply):
+            # Nothing left to ask the user: let the AI finish its answer, with the reasons below it
+            if auto_continues >= 2:
+                result.update(status="ok", reply=ChatNotices.as_markdown(notes))
+                return self._show(result)
+
+            def run():
+                return self.agents.team.continue_run(run_response=reply, requirements=reply.requirements), None
+            return self._respond(run, result["session_id"], notes, auto_continues + 1)
+        result.update(status="approval", run_id=self.approvals.add(reply), approvals=self.approvals.describe(reply),
+                      notices=notes, reply="Steward wants to change files and needs your approval.")
         return self._show(result)
 
     def _show(self, result):

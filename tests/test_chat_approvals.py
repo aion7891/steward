@@ -30,23 +30,26 @@ class FakeRequirement:
 
     def reject(self, note=None):
         self.confirmation = False
+        self.note = note
 
 
 class FakeTeam:
     """run() pauses for one delete; continue_run() finishes based on the user's decision."""
 
-    def __init__(self):
+    def __init__(self, target="/docs/report.tmp"):
         self.sessions = []
+        self.target = target
 
     def run(self, message, session_id=None):
         self.sessions.append(session_id)
-        req = FakeRequirement("delete_files", {"file_paths": ["/docs/report.tmp"], "reason": "temp file"})
+        req = FakeRequirement("delete_files", {"file_paths": [self.target], "reason": "temp file"})
         return SimpleNamespace(run_id="run-1", session_id=session_id, status=RunStatus.paused, content="paused",
                                requirements=[req], tools=[], references=None, member_responses=None)
 
     def continue_run(self, run_response=None, requirements=None):
         approved = requirements[0].confirmation is True
         text = "Moved report.tmp to the recycle bin." if approved else "OK, I left the file alone."
+        self.rejection_note = getattr(requirements[0], "note", None)
         return SimpleNamespace(run_id="run-1", session_id=run_response.session_id, status=RunStatus.completed,
                                content=text, requirements=[], tools=[], references=None, member_responses=None)
 
@@ -54,12 +57,13 @@ class FakeTeam:
 def build(tmp_path, dry_run=True):
     """API server whose team is replaced by FakeTeam."""
     (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "report.tmp").write_text("scratch", encoding="utf-8")
     cfg = tmp_path / "config.yaml"
     cfg.write_text(yaml.safe_dump({"scanner": {"watched_folders": [str(tmp_path / "docs")]},
                                    "safety": {"dry_run": dry_run}}), encoding="utf-8")
     app = StewardApp(config_path=cfg, base_dir=tmp_path)
     server = StewardAPIServer(app=app, rag_index=RAGIndex(app.config, embedder=HashEmbedder(dimensions=64), reader=app.reader))
-    server.agents.team = FakeTeam()
+    server.agents.team = FakeTeam(str(tmp_path / "docs" / "report.tmp"))
     server.chat.agents = server.agents
     return app, server, TestClient(server.fastapi_app)
 

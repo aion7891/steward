@@ -73,6 +73,19 @@ class PathMapper:
             raise ValueError(f"Steward does not have permission to read '{text}'.")
         return path
 
+    def to_local(self, raw_path):
+        """Clean a typed path (quotes, trailing /, ~) and return the path Steward can open.
+
+        No checks are made here: the path may not exist (for example a move destination).
+
+        Args:
+            raw_path: a Mac path, ~ path or /data path, as written by the user or the AI.
+        """
+        text = str(raw_path or "").strip().strip('"').strip("'").strip()
+        if len(text) > 1:
+            text = text.rstrip("/")
+        return self.to_container(self._expand_home(text)) if text else ""
+
     def to_container(self, host_path):
         """Translate a Mac path to its mounted Docker path (unchanged if no mapping matches)."""
         text = str(host_path)
