@@ -29,7 +29,7 @@ Severity: 🔴 Critical (breaks a core promise) · 🟠 High (wrong results or d
 | 19 | ⚪ | Purge, memory expiry, and preference capture are never wired in; first scan waits 60 min | Ops | 🟡 Partly: worker reloads settings; purge/expiry/first-scan timing still open |
 | 20 | ⚪ | Docker and local runs share `./data` (mixed `/data/...` and `/Users/...` paths) | Docker | 🟡 Partly: Mac paths shown everywhere; data folder still shared between modes |
 | 21 | ⚪ | Tests miss multi-step flows; 5 files exceed 200 lines; README says "Done" for everything | Quality | 🟡 Partly: 85 + 22 tests incl. multi-step flows; older 200+ line files remain |
-| 22 | ⚪ | Small nits (duplicate env line, Agno DB-id warning, stale docstring) | Polish | ⏳ Open |
+| 22 | ⚪ | Small nits (duplicate env line, Agno DB-id warning, stale docstring) | Polish | 🟡 Partly: duplicate `.env.example` line removed |
 
 ---
 

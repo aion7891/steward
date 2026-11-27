@@ -32,7 +32,7 @@ from steward.watcher import DownloadsWatcher
 from steward.worker import StewardWorker
 from steward.workflows import StewardWorkflows
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 
 __all__ = [
     "AppConfig", "ConfigError", "DatabaseManager", "DocumentContent", "DocumentReader",
