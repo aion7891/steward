@@ -51,6 +51,8 @@ class StewardWorker:
         """Execute software scan + deterministic ScanWorkflow safely."""
         self._log_info("Scheduled ScanWorkflow starting.")
         try:
+            # Pick up folders changed in the web UI's Settings page since the worker started
+            self.app.config.load_ui_overrides()
             self.app.software_detector.detect_and_save()
             return self.workflows.run_workflow("scan")
         except Exception as exc:

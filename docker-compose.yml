@@ -1,7 +1,10 @@
-# Steward Docker Compose configuration (3 services, connecting to native host Ollama).
+# Steward Docker Compose configuration, connecting to native host Ollama.
 # Make sure Ollama is running on your host machine (`ollama serve`).
 # Before starting, optionally export host apps:
 #   uv run python scripts/export_host_inventory.py
+#
+#   docker compose up -d                      -> steward-api, steward-worker, steward-web (http://127.0.0.1:8080)
+#   docker compose --profile legacy up -d     -> also the old Streamlit UI (http://127.0.0.1:8501)
 
 services:
   steward-api:
@@ -16,6 +19,12 @@ services:
       - STEWARD_API_HOST=0.0.0.0
       - STEWARD_API_PORT=7777
       - OLLAMA_HOST=${DOCKER_OLLAMA_HOST:-http://host.docker.internal:11434}
+      # Mac paths behind each mount, so "Scan a folder" accepts normal Mac paths
+      - STEWARD_HOST_HOME=${HOME}
+      - STEWARD_HOST_DOCUMENTS_DIR=${STEWARD_DOCUMENTS_DIR:-${HOME}/Documents}
+      - STEWARD_HOST_DESKTOP_DIR=${STEWARD_DESKTOP_DIR:-${HOME}/Desktop}
+      - STEWARD_HOST_DOWNLOADS_DIR=${STEWARD_DOWNLOADS_DIR:-${HOME}/Downloads}
+      - STEWARD_HOST_EXTRA_DIR=${STEWARD_EXTRA_DIR:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -24,6 +33,8 @@ services:
       - ${STEWARD_DOCUMENTS_DIR:-~/Documents}:/data/Documents:ro
       - ${STEWARD_DESKTOP_DIR:-~/Desktop}:/data/Desktop:ro
       - ${STEWARD_DOWNLOADS_DIR:-~/Downloads}:/data/Downloads
+      # Optional extra folder to scan (read-only); set STEWARD_EXTRA_DIR in .env
+      - ${STEWARD_EXTRA_DIR:-./host-inventory}:/data/Extra:ro
       - ./knowledge:/app/knowledge
       - ./data:/app/data
       - ./chroma:/app/chroma
@@ -62,9 +73,26 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  steward-web:
+    build: ./frontend
+    container_name: steward-web
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      steward-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # Legacy Streamlit UI: only started with `docker compose --profile legacy up -d`
   steward-ui:
     build: .
     container_name: steward-ui
+    profiles: ["legacy"]
     command:
       [
         "streamlit",

@@ -16,12 +16,19 @@ venv/
 *.db
 *.sqlite
 *.sqlite3
-data/
-vector_store/
-chroma/
-knowledge/
-reports/
-host-inventory/
+/data/
+/vector_store/
+/chroma/
+/knowledge/
+/reports/
+/host-inventory/
+
+# Local feature plans (feature-dev workflow notes, never committed)
+features/
+
+# Frontend build output and dependencies
+frontend/node_modules/
+frontend/dist/
 
 # OS and editor files
 .DS_Store

@@ -3,12 +3,14 @@
 import os
 
 import uvicorn
-import yaml
-from agno.agent import Agent
 from agno.os import AgentOS
 from fastapi import Body, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
+from steward.chat_service import ChatService
 from steward.main import StewardApp
+from steward.path_mapper import PathMapper
+from steward.web_routes import WebRoutes
 
 
 class StewardAPIServer:
@@ -20,12 +22,21 @@ class StewardAPIServer:
         self.rag_index = rag_index or self.steward_app.get_rag_index()
         self.agents = self.steward_app.get_agents(model=model, rag_index=self.rag_index)
         self.workflows = self.steward_app.get_workflows(rag_index=self.rag_index)
+        # One mapper shows Docker paths (/data/...) as the user's Mac paths in every response
+        self.path_mapper = PathMapper(self.steward_app.config)
+        self.chat = ChatService(self.steward_app, self.agents, self.rag_index, mapper=self.path_mapper)
         self.fastapi_app = self._build_app()
 
     def _build_app(self):
         """Mount custom /steward/* routes onto an Agno AgentOS FastAPI application."""
         base_app = FastAPI(title="Steward API", version=str(self.steward_app.config.get("app.version", "0.9.0")))
         self._register_steward_routes(base_app)
+        self.web_routes = WebRoutes(self.steward_app, mapper=self.path_mapper, on_model_change=self._rebuild_agents)
+        self.web_routes.register(base_app)
+        # Only the Vite dev server needs CORS; in Docker nginx serves UI and API from one origin
+        origins = os.getenv("STEWARD_CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173")
+        base_app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in origins.split(",") if o.strip()],
+                                allow_methods=["*"], allow_headers=["*"])
         agent_os = AgentOS(
             id="steward-os",
             name="Steward",
@@ -44,7 +55,9 @@ class StewardAPIServer:
         return agent_os.get_app()
 
     def _register_steward_routes(self, api):
-        """Attach Steward's custom health, scan, chat, actions, reports, and settings routes."""
+        """Attach Steward's custom health, scan and chat routes, then the action/report routes."""
+        self._register_action_routes(api)
+        self._register_settings_routes(api)
 
         @api.get("/steward/health")
         def health():
@@ -59,16 +72,36 @@ class StewardAPIServer:
             res = self.workflows.run_workflow("scan", additional_data=extra)
             return {"status": "ok", "result": getattr(res, "content", res)}
 
+        self._register_chat_routes(api)
+
+    def _register_chat_routes(self, api):
+        """Attach chat questions and approve/reject decisions for paused chat runs."""
+
         @api.post("/steward/chat")
         def chat(payload=Body(...)):
-            message = str((payload or {}).get("message", "")).strip()
+            data = payload or {}
+            message = str(data.get("message", "")).strip()
             if not message:
                 raise HTTPException(status_code=400, detail="'message' is required.")
-            return self._answer_chat(message)
+            return self.chat.answer(message, session_id=data.get("session_id") or None)
+
+        @api.post("/steward/chat/{run_id}/decision")
+        def chat_decision(run_id, payload=Body(...)):
+            data = payload or {}
+            if not isinstance(data.get("approve"), bool):
+                raise HTTPException(status_code=400, detail="'approve' must be true or false.")
+            try:
+                return self.chat.decide(run_id, data["approve"], note=data.get("note"))
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail=str(exc.args[0])) from exc
+
+    def _register_action_routes(self, api):
+        """Attach the actions, reports, recommendations and settings routes."""
 
         @api.get("/steward/actions")
         def list_actions(status=None, limit=50):
-            return {"status": "ok", "actions": self.steward_app.organizer.list_actions(status=status, limit=int(limit))}
+            actions = self.steward_app.organizer.list_actions(status=status, limit=int(limit))
+            return {"status": "ok", "actions": self.path_mapper.to_host_deep(actions)}
 
         @api.post("/steward/actions/{action_id}/approve")
         def approve_action(action_id, payload=Body(default=None)):
@@ -101,61 +134,18 @@ class StewardAPIServer:
                 output_format=data.get("output_format", "markdown"),
             )
 
+    def _register_settings_routes(self, api):
+        """Attach the recommendations route (settings routes live in web_routes.py)."""
+
         @api.get("/steward/recommendations")
         def recommendations():
             return {"status": "ok", **self.steward_app.recommender.generate_recommendations(persist_patterns=False)}
 
-        @api.get("/steward/settings")
-        def get_settings():
-            cfg = self.steward_app.config
-            return {
-                "status": "ok",
-                "models": cfg.get("models"),
-                "safety": cfg.get("safety"),
-                "watched_folders": cfg.get("scanner.watched_folders", []),
-            }
-
-        @api.put("/steward/settings")
-        def update_settings(payload=Body(...)):
-            return self._apply_settings(payload or {})
-
-    def _answer_chat(self, message):
-        """Route a chat query via Agno Team, with OKF+RAG fallback if model lacks tool calling."""
-        okf_hits = self.steward_app.okf_bundle.search_concepts(message, limit=3)
-        rag_hits = self.rag_index.search(message, limit=3) if not okf_hits else []
-        sources = [h["rel_path"] for h in okf_hits] + [h["file_name"] for h in rag_hits]
-        try:
-            reply = self.agents.team.run(message)
-            text = str(getattr(reply, "content", reply))
-            if "does not support tools" in text.lower():
-                context = f"OKF: {[(h['rel_path'], h['frontmatter'].get('description')) for h in okf_hits]}\nRAG: {[(h['file_name'], h['content'][:200]) for h in rag_hits]}"
-                fallback = Agent(model=self.agents.model, markdown=True).run(
-                    f"Answer concisely citing file names or OKF paths.\n{context}\n\nQuestion: {message}"
-                )
-                text = str(getattr(fallback, "content", fallback))
-            return {"status": "ok", "reply": text, "sources": sources}
-        except Exception as exc:
-            return {"status": "error", "reply": f"Model unavailable: {exc}", "sources": sources}
-
-    def _apply_settings(self, updates):
-        """Update allowed model, dry_run, and folder settings and save config.yaml."""
-        cfg = self.steward_app.config
-        if "provider" in updates:
-            cfg.data["models"]["provider"] = str(updates["provider"]).lower()
-        if "model_id" in updates:
-            cfg.data["models"]["model_id"] = str(updates["model_id"])
-        if "dry_run" in updates:
-            cfg.data["safety"]["dry_run"] = bool(updates["dry_run"])
-        if "watched_folders" in updates and isinstance(updates["watched_folders"], list):
-            cfg.data["scanner"]["watched_folders"] = list(updates["watched_folders"])
-        cfg.validate()
-        cfg.config_path.write_text(yaml.safe_dump(cfg.data, sort_keys=False), encoding="utf-8")
-        return {
-            "status": "ok",
-            "models": cfg.get("models"),
-            "safety": cfg.get("safety"),
-            "watched_folders": cfg.get("scanner.watched_folders", []),
-        }
+    def _rebuild_agents(self):
+        """Rebuild the agents and team after the model was changed in Settings."""
+        model = self.steward_app.model_factory.create_chat_model()
+        self.agents = self.steward_app.get_agents(model=model, rag_index=self.rag_index)
+        self.chat.agents = self.agents
 
 
 def create_api_app(config_path=None, app=None, rag_index=None, model=None):

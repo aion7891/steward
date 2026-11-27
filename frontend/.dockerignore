@@ -1,0 +1,5 @@
+# Keep the Docker build context small and reproducible
+node_modules/
+dist/
+*.log
+.DS_Store

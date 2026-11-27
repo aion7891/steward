@@ -25,28 +25,36 @@ uv run steward --check
 uv run pytest -v
 ```
 
-### Run Local Chat UI & AgentOS API
+### Run Always-On with Docker Compose (recommended, uses native host Ollama)
 ```bash
-# Terminal 1: Start Agno AgentOS FastAPI server on http://127.0.0.1:7777
-uv run python -m steward.api
+# 1. Start Ollama on your Mac (needs: ollama pull gemma4 && ollama pull nomic-embed-text)
+ollama serve
 
-# Terminal 2: Start Local Streamlit UI on http://127.0.0.1:8501
-uv run streamlit run steward/ui.py
-
-# Terminal 3 (optional): Start APScheduler background worker + Downloads watcher
-uv run python -m steward.worker
-```
-
-### Run Always-On with Docker Compose (Uses Native Host Ollama)
-```bash
-# 1. Export host installed apps so the Docker container stays isolated
+# 2. Export host installed apps so the Docker container stays isolated
 uv run python scripts/export_host_inventory.py
 
-# 2. Build and launch steward-api, steward-worker, and steward-ui
-#    (connects directly to your running native Ollama via host.docker.internal:11434)
+# 3. Build and launch steward-api, steward-worker, and steward-web
 docker compose up -d --build
 
-# 3. Open http://127.0.0.1:8501 (Streamlit UI) or http://127.0.0.1:7777/steward/health
+# 4. Open the web UI: Dashboard, Scan a folder, Chat
+open http://127.0.0.1:8080
+
+# Optional: the old Streamlit UI on http://127.0.0.1:8501
+docker compose --profile legacy up -d
+```
+
+See [Phase 10: Web UI](docs/phase-10-web-ui.md) for scanning extra folders from Docker (`STEWARD_EXTRA_DIR`) and troubleshooting.
+
+### Run Locally for Development (no Docker)
+```bash
+# Terminal 1: Agno AgentOS FastAPI server on http://127.0.0.1:7777
+uv run python -m steward.api
+
+# Terminal 2: Web UI dev server on http://127.0.0.1:5173 (proxies /steward to :7777)
+cd frontend && npm install && npm run dev
+
+# Terminal 3 (optional): APScheduler background worker + Downloads watcher
+uv run python -m steward.worker
 ```
 
 ### CLI Reference
@@ -103,3 +111,4 @@ All phase guides include Mermaid flow diagrams, change tables, and run instructi
 - [Phase 7: Recommendations and Reports](docs/phase-7-reports.md) — **Done**
 - [Phase 8: Chat UI (AgentOS + Streamlit)](docs/phase-8-ui.md) — **Done**
 - [Phase 9: Docker Deployment & Scheduler](docs/phase-9-docker.md) — **Done**
+- [Phase 10: Professional Web UI (Dashboard, Scan a folder, Chat)](docs/phase-10-web-ui.md) — **Done**

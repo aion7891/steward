@@ -85,7 +85,9 @@ class RAGIndex:
             Document(id=c["id"], name=c["name"], content=c["content"], meta_data=c["meta_data"])
             for c in chunks
         ]
-        self.vector_db.upsert(content_hash=file_hash, documents=agno_docs)
+        failure = self._safe_upsert(path, file_hash, agno_docs)
+        if failure is not None:
+            return {"path": path_key, "status": "error", "reason": failure}
 
         self.manifest[path_key] = {
             "sha256": file_hash, "file_type": content.file_type,
@@ -94,6 +96,16 @@ class RAGIndex:
         self._save_manifest()
         self._log_info(f"Indexed {path.name} ({len(agno_docs)} chunk(s)) into ChromaDB.")
         return {"path": path_key, "status": "indexed", "chunks": len(agno_docs)}
+
+    def _safe_upsert(self, path, file_hash, agno_docs):
+        """Embed and store chunks; return an error message instead of raising (e.g. Ollama is off)."""
+        try:
+            self.vector_db.upsert(content_hash=file_hash, documents=agno_docs)
+            return None
+        except Exception as exc:
+            if self.logger is not None:
+                self.logger.warning(f"Could not embed {path.name}: {exc}")
+            return f"Embedding failed: {exc}"
 
     def index_from_database(self, db, force=False):
         """Index all supported, non-temporary files recorded in SQLite."""

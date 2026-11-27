@@ -58,7 +58,7 @@ class OrganizerTools(Toolkit):
         if proposal["status"] != "proposed":
             return proposal
         self.organizer.approve_action(proposal["id"])
-        return self.organizer.execute_action(proposal["id"], dry_run=dry_run)
+        return self.organizer.execute_action(proposal["id"], dry_run=self._safe_dry_run(dry_run))
 
     def archive_files(self, file_paths, archive_name="archive", reason="Archive old files", dry_run=None):
         """Propose, approve (after HITL confirm), and compress files into a ZIP archive."""
@@ -68,7 +68,7 @@ class OrganizerTools(Toolkit):
         if proposal["status"] != "proposed":
             return proposal
         self.organizer.approve_action(proposal["id"])
-        return self.organizer.execute_action(proposal["id"], dry_run=dry_run)
+        return self.organizer.execute_action(proposal["id"], dry_run=self._safe_dry_run(dry_run))
 
     def delete_files(self, file_paths, reason="User-approved cleanup", dry_run=None):
         """Propose, approve (after HITL confirm), and move files into the recycle bin."""
@@ -78,7 +78,7 @@ class OrganizerTools(Toolkit):
             if proposal["status"] != "proposed":
                 return proposal
             self.organizer.approve_action(proposal["id"])
-            results.append(self.organizer.execute_action(proposal["id"], dry_run=dry_run))
+            results.append(self.organizer.execute_action(proposal["id"], dry_run=self._safe_dry_run(dry_run)))
         statuses = {r["status"] for r in results}
         overall = "dry_run" if statuses == {"dry_run"} else ("ok" if statuses == {"done"} else "mixed")
         return {
@@ -86,6 +86,16 @@ class OrganizerTools(Toolkit):
             "message": f"Processed {len(results)} recycle action(s) (status={overall}).",
             "results": results,
         }
+
+    def _safe_dry_run(self, requested):
+        """Return the dry-run flag to use: the config's dry-run always wins.
+
+        The AI chooses tool arguments, so it may ask for dry_run=False. While dry-run is ON in
+        config, every action stays a preview; the AI can only make an action safer, never riskier.
+        """
+        if self.config.get("safety.dry_run", True):
+            return True
+        return None if requested is None else bool(requested)
 
     def undo_action(self, action_id):
         """Restore a completed move, ZIP archive, or recycle-bin delete by action ID."""
