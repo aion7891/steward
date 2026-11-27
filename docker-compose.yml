@@ -1,7 +1,10 @@
-# Steward Docker Compose configuration (3 services, connecting to native host Ollama).
+# Steward Docker Compose configuration, connecting to native host Ollama.
 # Make sure Ollama is running on your host machine (`ollama serve`).
 # Before starting, optionally export host apps:
 #   uv run python scripts/export_host_inventory.py
+#
+#   docker compose up -d                      -> steward-api, steward-worker, steward-web (http://127.0.0.1:8080)
+#   docker compose --profile legacy up -d     -> also the old Streamlit UI (http://127.0.0.1:8501)
 
 services:
   steward-api:
@@ -70,9 +73,26 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  steward-web:
+    build: ./frontend
+    container_name: steward-web
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      steward-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # Legacy Streamlit UI: only started with `docker compose --profile legacy up -d`
   steward-ui:
     build: .
     container_name: steward-ui
+    profiles: ["legacy"]
     command:
       [
         "streamlit",

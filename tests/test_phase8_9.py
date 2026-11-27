@@ -138,7 +138,12 @@ class TestWorkerHostInventoryAndDocker:
 
         compose = yaml.safe_load((root / "docker-compose.yml").read_text(encoding="utf-8"))
         services = compose["services"]
-        assert set(services.keys()) == {"steward-api", "steward-worker", "steward-ui"}
+        assert set(services.keys()) == {"steward-api", "steward-worker", "steward-web", "steward-ui"}
+        # The web UI is the default; Streamlit only starts with the "legacy" profile
+        assert "profiles" not in services["steward-web"]
+        assert services["steward-ui"]["profiles"] == ["legacy"]
+        assert services["steward-web"]["build"] == "./frontend"
+        assert (root / "frontend" / "Dockerfile").exists() and (root / "frontend" / "nginx.conf").exists()
         for name, svc in services.items():
             assert svc["restart"] == "unless-stopped", f"{name} missing restart policy"
             for port_map in svc.get("ports", []):
