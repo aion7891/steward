@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import { errorMessage } from "../api/client.js";
+import { isCloudModelName } from "../components/layout/AppShell.jsx";
 import {
   baseName,
   formatBytes,
@@ -57,5 +58,14 @@ describe("errorMessage", () => {
     );
     expect(errorMessage({}, 404)).toBe("Not found.");
     expect(errorMessage(null, 500)).toBe("Request failed (HTTP 500).");
+  });
+});
+
+describe("isCloudModelName", () => {
+  it("spots Ollama cloud models", () => {
+    expect(isCloudModelName("gpt-oss:20b-cloud")).toBe(true);
+    expect(isCloudModelName("minimax-m2:cloud")).toBe(true);
+    expect(isCloudModelName("gemma4")).toBe(false);
+    expect(isCloudModelName(undefined)).toBe(false);
   });
 });

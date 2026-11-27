@@ -71,6 +71,7 @@ class AppConfig:
         self.config_path = self._resolve_path(chosen_path)
         self.data = copy.deepcopy(self.DEFAULT_DATA)
         self._load_yaml()
+        self.load_ui_overrides()  # settings saved from the web UI (data/settings.override.yaml)
         self._apply_env_overrides()
         self.validate()
 
@@ -138,6 +139,21 @@ class AppConfig:
                 return default
             current = current[part]
         return current
+
+    def override_path(self):
+        """Path of the file where the web UI saves settings (config.yaml itself is never rewritten)."""
+        return self.get_path("data_dir") / "settings.override.yaml"
+
+    def load_ui_overrides(self):
+        """Merge web-UI settings over config.yaml; .env values are applied afterwards and still win."""
+        path = self.override_path()
+        try:
+            loaded = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else None
+        except (OSError, yaml.YAMLError):
+            return  # a broken override file must never stop Steward; config.yaml values stay
+        if isinstance(loaded, dict):
+            self._deep_merge(self.data, loaded)
+            self._apply_env_overrides()
 
     def get_path(self, key_name):
         """Resolve a configured path under the 'paths' section to an absolute Path."""

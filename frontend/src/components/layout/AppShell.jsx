@@ -10,6 +10,11 @@ import TopBar from "./TopBar.jsx";
 
 const HEALTH_INTERVAL_MS = 15000;
 
+/** True for Ollama models that run on Ollama's servers ("...-cloud" or "...:cloud"). */
+export function isCloudModelName(name) {
+  return /(-|:)cloud$/.test(String(name || ""));
+}
+
 function GlobalWarnings({ health, error }) {
   if (error) {
     return (
@@ -19,12 +24,15 @@ function GlobalWarnings({ health, error }) {
       </Alert>
     );
   }
-  const provider = health && health.models && health.models.chat_provider;
-  if (provider && provider !== "ollama") {
+  const models = (health && health.models) || {};
+  const provider = models.chat_provider;
+  // Ollama "cloud" models (e.g. gpt-oss:20b-cloud) also run off this computer
+  const ollamaCloud = provider === "ollama" && isCloudModelName(models.chat_model);
+  if (provider && (provider !== "ollama" || ollamaCloud)) {
     return (
       <Alert tone="warning" title="Cloud model active">
-        Chat questions and document snippets are sent to {provider}. Switch back to Ollama to keep everything on
-        this computer.
+        Chat questions and document snippets are sent to {ollamaCloud ? "Ollama's cloud" : provider}. Pick a local
+        model in Settings to keep everything on this computer.
       </Alert>
     );
   }

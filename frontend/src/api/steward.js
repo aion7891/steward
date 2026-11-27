@@ -80,3 +80,17 @@ export function decideChat(runId, approve) {
     timeoutMs: CHAT_TIMEOUT_MS,
   });
 }
+
+export function getSettings() {
+  return request("/steward/settings");
+}
+
+/** Save some settings, e.g. { dry_run: false } or { watched_folders: [...] }. */
+export function saveSettings(changes) {
+  return request("/steward/settings", { method: "PUT", body: changes, timeoutMs: 60000 });
+}
+
+/** Installed Ollama models and whether each can use tools. */
+export function getModels() {
+  return request("/steward/models");
+}

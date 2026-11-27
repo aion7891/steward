@@ -1,11 +1,12 @@
 // Left navigation: brand, the three pages, and a small footer.
-import { FolderSearch, LayoutDashboard, MessageSquare } from "lucide-react";
+import { FolderSearch, LayoutDashboard, MessageSquare, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 const LINKS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/scan", label: "Scan a folder", icon: FolderSearch },
   { to: "/chat", label: "Chat", icon: MessageSquare },
+  { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function Sidebar() {

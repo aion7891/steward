@@ -84,6 +84,10 @@ class TestAgentOSAPI:
         assert len(client.get("/steward/reports").json()["reports"]) == 2
         assert len(client.get("/steward/recommendations").json()["suggestions"]) >= 1
 
+        # Model changes are now checked against Ollama (installed + can use tools); fake that check offline
+        server.web_routes.settings.models_checker = type("Checker", (), {"check_chat_model": lambda self, m: m})()
+        # Other tests load the project .env into os.environ; use a clean env so nothing is "locked by .env"
+        server.web_routes.settings.env = {}
         updated = client.put("/steward/settings", json={"dry_run": False, "model_id": "llama3.2"})
         assert updated.status_code == 200
         assert updated.json()["safety"]["dry_run"] is False

@@ -3,7 +3,6 @@
 import os
 
 import uvicorn
-import yaml
 from agno.os import AgentOS
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +31,7 @@ class StewardAPIServer:
         """Mount custom /steward/* routes onto an Agno AgentOS FastAPI application."""
         base_app = FastAPI(title="Steward API", version=str(self.steward_app.config.get("app.version", "0.9.0")))
         self._register_steward_routes(base_app)
-        self.web_routes = WebRoutes(self.steward_app, mapper=self.path_mapper)
+        self.web_routes = WebRoutes(self.steward_app, mapper=self.path_mapper, on_model_change=self._rebuild_agents)
         self.web_routes.register(base_app)
         # Only the Vite dev server needs CORS; in Docker nginx serves UI and API from one origin
         origins = os.getenv("STEWARD_CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173")
@@ -136,45 +135,17 @@ class StewardAPIServer:
             )
 
     def _register_settings_routes(self, api):
-        """Attach the recommendations and settings routes."""
+        """Attach the recommendations route (settings routes live in web_routes.py)."""
 
         @api.get("/steward/recommendations")
         def recommendations():
             return {"status": "ok", **self.steward_app.recommender.generate_recommendations(persist_patterns=False)}
 
-        @api.get("/steward/settings")
-        def get_settings():
-            cfg = self.steward_app.config
-            return {
-                "status": "ok",
-                "models": cfg.get("models"),
-                "safety": cfg.get("safety"),
-                "watched_folders": cfg.get("scanner.watched_folders", []),
-            }
-
-        @api.put("/steward/settings")
-        def update_settings(payload=Body(...)):
-            return self._apply_settings(payload or {})
-
-    def _apply_settings(self, updates):
-        """Update allowed model, dry_run, and folder settings and save config.yaml."""
-        cfg = self.steward_app.config
-        if "provider" in updates:
-            cfg.data["models"]["provider"] = str(updates["provider"]).lower()
-        if "model_id" in updates:
-            cfg.data["models"]["model_id"] = str(updates["model_id"])
-        if "dry_run" in updates:
-            cfg.data["safety"]["dry_run"] = bool(updates["dry_run"])
-        if "watched_folders" in updates and isinstance(updates["watched_folders"], list):
-            cfg.data["scanner"]["watched_folders"] = list(updates["watched_folders"])
-        cfg.validate()
-        cfg.config_path.write_text(yaml.safe_dump(cfg.data, sort_keys=False), encoding="utf-8")
-        return {
-            "status": "ok",
-            "models": cfg.get("models"),
-            "safety": cfg.get("safety"),
-            "watched_folders": cfg.get("scanner.watched_folders", []),
-        }
+    def _rebuild_agents(self):
+        """Rebuild the agents and team after the model was changed in Settings."""
+        model = self.steward_app.model_factory.create_chat_model()
+        self.agents = self.steward_app.get_agents(model=model, rag_index=self.rag_index)
+        self.chat.agents = self.agents
 
 
 def create_api_app(config_path=None, app=None, rag_index=None, model=None):
