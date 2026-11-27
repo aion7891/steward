@@ -63,6 +63,20 @@ export function listActions(status, limit = 50) {
   return request(`/steward/actions${query}`);
 }
 
-export function sendChat(message) {
-  return request("/steward/chat", { method: "POST", body: { message }, timeoutMs: CHAT_TIMEOUT_MS });
+/** Ask a question inside one conversation (sessionId keeps the AI's memory per chat). */
+export function sendChat(message, sessionId) {
+  return request("/steward/chat", {
+    method: "POST",
+    body: { message, session_id: sessionId },
+    timeoutMs: CHAT_TIMEOUT_MS,
+  });
+}
+
+/** Approve or reject the file changes a paused chat answer is waiting for. */
+export function decideChat(runId, approve) {
+  return request(`/steward/chat/${encodeURIComponent(runId)}/decision`, {
+    method: "POST",
+    body: { approve: Boolean(approve) },
+    timeoutMs: CHAT_TIMEOUT_MS,
+  });
 }

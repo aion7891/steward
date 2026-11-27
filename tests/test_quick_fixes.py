@@ -51,7 +51,7 @@ class TestMacPathsInResponses:
     def test_chat_answer_shows_mac_paths(self, tmp_path):
         app, _ = build_app(tmp_path)
         run = type("Run", (), {"content": "It is in /data/Documents/a.pdf", "status": RunStatus.completed})()
-        agents = type("Agents", (), {"team": type("Team", (), {"run": lambda self, m: run})(), "model": None})()
+        agents = type("Agents", (), {"team": type("Team", (), {"run": lambda self, m, **kwargs: run})(), "model": None})()
         rag = type("Rag", (), {"search": lambda self, q, limit=3: []})()
         mapper = PathMapper(None, mappings=[("/Users/me/Documents", "/data/Documents")])
         reply = ChatService(app, agents, rag, mapper=mapper).answer("where?")

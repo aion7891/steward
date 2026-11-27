@@ -153,19 +153,22 @@ class TestChatStatus:
     """POST /steward/chat reports model errors and approval pauses honestly."""
 
     def test_chat_maps_run_status_to_api_status(self, tmp_path, monkeypatch):
-        """ERROR runs become status 'error', PAUSED runs 'paused', COMPLETED runs 'ok' with sources."""
+        """ERROR runs become 'error', COMPLETED runs 'ok'; a pause with no approval step is an error.
+
+        (Pauses WITH approval steps are covered in tests/test_chat_approvals.py.)
+        """
         from agno.run.base import RunStatus
 
         _, server, client, _ = WebApiHelper.build_client(tmp_path)
         cases = [
-            (FakeRun("Failed to connect to Ollama.", RunStatus.error), "error"),
-            (FakeRun("Team run paused. delete_files requires confirmation", RunStatus.paused), "paused"),
-            (FakeRun("Launch is December 15.", RunStatus.completed), "ok"),
+            (FakeRun("Failed to connect to Ollama.", RunStatus.error), "error", "Failed to connect to Ollama."),
+            (FakeRun("Team run paused.", RunStatus.paused), "error", "The AI paused for input Steward cannot collect in chat yet."),
+            (FakeRun("Launch is December 15.", RunStatus.completed), "ok", "Launch is December 15."),
         ]
-        for run, expected in cases:
-            monkeypatch.setattr(server.agents.team, "run", lambda message, run=run: run)
+        for run, expected, reply in cases:
+            monkeypatch.setattr(server.agents.team, "run", lambda message, run=run, **kwargs: run)
             body = client.post("/steward/chat", json={"message": "When is the Apollo launch?"}).json()
-            assert body["status"] == expected and body["reply"] == run.content
+            assert body["status"] == expected and body["reply"] == reply
             if expected != "ok":
                 assert body["sources"] == []
         assert client.post("/steward/chat", json={"message": "  "}).status_code == 400

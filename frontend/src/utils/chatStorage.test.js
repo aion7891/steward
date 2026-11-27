@@ -1,7 +1,10 @@
 // Tests for saving and loading the chat history.
 import { describe, expect, it } from "vitest";
 
-import { isPausedReply, loadMessages, MAX_MESSAGES, replyToMessage, saveMessages, trimMessages } from "./chatStorage.js";
+import {
+  isPausedReply, loadMessages, loadSessionId, MAX_MESSAGES, newSessionId, replyToMessage, saveMessages,
+  toSourceChip, trimMessages,
+} from "./chatStorage.js";
 
 function fakeStorage(initial = {}) {
   const data = { ...initial };
@@ -61,6 +64,38 @@ describe("replyToMessage", () => {
     expect(paused.sources).toEqual([]);
     expect(replyToMessage(null, 1).status).toBe("error");
     expect(replyToMessage({ status: "paused", reply: "anything" }, 2).status).toBe("paused");
+  });
+});
+
+describe("approvals and sessions", () => {
+  it("turns an approval reply into an undecided approval card", () => {
+    const steps = [{ tool: "delete_files", summary: "Move 1 file(s) to Steward's recycle bin", names: ["a.tmp"] }];
+    const m = replyToMessage({ status: "approval", reply: "needs approval", run_id: "run-1", approvals: steps }, 4);
+    expect(m).toMatchObject({ status: "approval", runId: "run-1", approvals: steps, decision: null, sources: [] });
+  });
+
+  it("keeps one conversation id until a new one is started", () => {
+    const storage = fakeStorage();
+    const first = loadSessionId(storage);
+    expect(first).toMatch(/^web-/);
+    expect(loadSessionId(storage)).toBe(first);
+    const second = newSessionId(storage);
+    expect(second).not.toBe(first);
+    expect(loadSessionId(storage)).toBe(second);
+    expect(loadSessionId(null)).toMatch(/^web-/);  // blocked storage still gives an id
+  });
+});
+
+describe("toSourceChip", () => {
+  it("accepts new source objects and old plain-string sources", () => {
+    expect(toSourceChip({ kind: "file", label: "invoice.pdf", path: "/d/invoice.pdf" })).toEqual({
+      kind: "file", label: "invoice.pdf", path: "/d/invoice.pdf",
+    });
+    expect(toSourceChip({ kind: "note", label: "acme", path: "projects/acme.md" }).kind).toBe("note");
+    expect(toSourceChip("files/invoice-q3-9ea16736.md")).toEqual({
+      kind: "note", label: "invoice-q3", path: "files/invoice-q3-9ea16736.md",
+    });
+    expect(toSourceChip("budget.xlsx")).toEqual({ kind: "file", label: "budget.xlsx", path: "budget.xlsx" });
   });
 });
 

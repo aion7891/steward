@@ -2,14 +2,14 @@
 import { Bot, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { sendChat } from "../api/steward.js";
+import { decideChat, sendChat } from "../api/steward.js";
 import Composer from "../components/chat/Composer.jsx";
 import MessageList from "../components/chat/MessageList.jsx";
 import SuggestedPrompts from "../components/chat/SuggestedPrompts.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import Button from "../components/ui/Button.jsx";
 import Spinner from "../components/ui/Spinner.jsx";
-import { loadMessages, replyToMessage, saveMessages } from "../utils/chatStorage.js";
+import { loadMessages, loadSessionId, newSessionId, replyToMessage, saveMessages } from "../utils/chatStorage.js";
 import { formatDuration } from "../utils/format.js";
 import "../styles/chat.css";
 
@@ -32,24 +32,41 @@ function Thinking({ startedAt }) {
 
 export default function ChatPage() {
   const [messages, setMessages] = useState(() => loadMessages());
+  const [sessionId, setSessionId] = useState(() => loadSessionId());
   const [pendingSince, setPendingSince] = useState(null);
 
   useEffect(() => {
     saveMessages(messages);
   }, [messages]);
 
-  async function ask(text) {
+  // Call the API, show "Thinking…", then add Steward's reply (or the error) to the chat
+  async function runRequest(apiCall) {
     const startedAt = Date.now();
-    setMessages((list) => [...list, { id: `u-${startedAt}`, role: "user", content: text, createdAt: new Date().toISOString() }]);
     setPendingSince(startedAt);
     let response;
     try {
-      response = await sendChat(text);
+      response = await apiCall();
     } catch (error) {
       response = { status: "error", reply: error.message };
     }
     setMessages((list) => [...list, replyToMessage(response, (Date.now() - startedAt) / 1000)]);
     setPendingSince(null);
+  }
+
+  function ask(text) {
+    setMessages((list) => [...list, { id: `u-${Date.now()}`, role: "user", content: text, createdAt: new Date().toISOString() }]);
+    runRequest(() => sendChat(text, sessionId));
+  }
+
+  function decide(message, approve) {
+    // Remember the decision on the card, then let the AI continue its paused run
+    setMessages((list) => list.map((m) => (m.id === message.id ? { ...m, decision: approve ? "approved" : "rejected" } : m)));
+    runRequest(() => decideChat(message.runId, approve));
+  }
+
+  function clearChat() {
+    setMessages([]);
+    setSessionId(newSessionId());  // a fresh conversation on the server too
   }
 
   function retry() {
@@ -68,14 +85,14 @@ export default function ChatPage() {
         title="Chat"
         subtitle="Ask about your files and documents. Everything stays on this computer with a local model."
         actions={messages.length > 0 && (
-          <Button icon={Trash2} variant="ghost" disabled={busy} onClick={() => setMessages([])}>Clear chat</Button>
+          <Button icon={Trash2} variant="ghost" disabled={busy} onClick={clearChat}>Clear chat</Button>
         )}
       />
       <section className="card chat-card">
         {messages.length === 0 && !busy ? (
           <SuggestedPrompts onPick={ask} />
         ) : (
-          <MessageList messages={messages} onRetry={busy ? null : retry}
+          <MessageList messages={messages} onRetry={busy ? null : retry} onDecide={decide} busy={busy}
             pendingSlot={busy ? <Thinking startedAt={pendingSince} /> : null} />
         )}
         <Composer onSend={ask} disabled={busy} />

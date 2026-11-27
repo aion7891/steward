@@ -73,12 +73,28 @@ class StewardAPIServer:
             res = self.workflows.run_workflow("scan", additional_data=extra)
             return {"status": "ok", "result": getattr(res, "content", res)}
 
+        self._register_chat_routes(api)
+
+    def _register_chat_routes(self, api):
+        """Attach chat questions and approve/reject decisions for paused chat runs."""
+
         @api.post("/steward/chat")
         def chat(payload=Body(...)):
-            message = str((payload or {}).get("message", "")).strip()
+            data = payload or {}
+            message = str(data.get("message", "")).strip()
             if not message:
                 raise HTTPException(status_code=400, detail="'message' is required.")
-            return self.chat.answer(message)
+            return self.chat.answer(message, session_id=data.get("session_id") or None)
+
+        @api.post("/steward/chat/{run_id}/decision")
+        def chat_decision(run_id, payload=Body(...)):
+            data = payload or {}
+            if not isinstance(data.get("approve"), bool):
+                raise HTTPException(status_code=400, detail="'approve' must be true or false.")
+            try:
+                return self.chat.decide(run_id, data["approve"], note=data.get("note"))
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail=str(exc.args[0])) from exc
 
     def _register_action_routes(self, api):
         """Attach the actions, reports, recommendations and settings routes."""
