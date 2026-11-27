@@ -3,6 +3,8 @@
 import json
 from datetime import datetime, timedelta, timezone
 
+from steward.daily_stats import DailyStats
+
 MB = 1024 * 1024
 
 
@@ -10,7 +12,8 @@ class DashboardService:
     """Collects everything the Dashboard page shows in one call.
 
     All numbers come from SQLite, the RAG manifest and OKF memory, so the
-    dashboard never needs the AI model and stays fast. Days are UTC days.
+    dashboard never needs the AI model and stays fast. Days follow the user's
+    local time (the browser sends its UTC offset).
     """
 
     MIN_DAYS, MAX_DAYS = 1, 90
@@ -25,21 +28,25 @@ class DashboardService:
         self.app = app
         self.db = app.db
         self.advisor = advisor
+        self.daily_stats = DailyStats(app.db)
 
-    def summary(self, days=14):
+    def summary(self, days=14, tz_offset=0):
         """Return status cards, a daily series, the to-do list and suggestions.
 
         Args:
             days: how many days of history to include (1-90).
+            tz_offset: browser's minutes behind UTC (JavaScript getTimezoneOffset()).
         """
         days = self._validate_days(days)
+        daily = self.daily_stats.series(days, tz_offset)
         findings = self.advisor.findings_for(None)
         advice = self.advisor.suggestions_for(None, findings)
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "days": days,
-            "status": dict(self._status_cards(advice["reclaimable_mb"]), reclaimable_bytes=advice["reclaimable_bytes"]),
-            "daily": self._daily_series(days),
+            "status": dict(self._status_cards(advice["reclaimable_mb"], today=daily[-1]),
+                           reclaimable_bytes=advice["reclaimable_bytes"]),
+            "daily": daily,
             "todo": self._actions_with_size("proposed"),
             "approved_waiting": self._actions_with_size("approved"),
             "suggestions": advice["suggestions"],
@@ -60,15 +67,11 @@ class DashboardService:
             raise ValueError(f"'days' must be between {self.MIN_DAYS} and {self.MAX_DAYS}.")
         return value
 
-    def _status_cards(self, reclaimable_mb):
-        """Headline numbers: last scan, files, today's activity, pending work, errors."""
-        now = datetime.now(timezone.utc)
-        today, day_ago = now.date().isoformat(), (now - timedelta(hours=24)).isoformat()
+    def _status_cards(self, reclaimable_mb, today):
+        """Headline numbers: last scan, files, today's activity (local day), pending work, errors."""
+        day_ago = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
         files = self._one("SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes), 0) AS b FROM files")
         last = self._one("SELECT MAX(completed_at) AS at FROM scan_runs")
-        runs_today = self._one(
-            "SELECT COUNT(*) AS n, COALESCE(SUM(files_seen), 0) AS seen, COALESCE(SUM(hashed_files), 0) AS changed "
-            "FROM scan_runs WHERE substr(started_at, 1, 10) = ?", (today,))
         scan_errors = self._one("SELECT COALESCE(SUM(errors), 0) AS n FROM scan_runs WHERE started_at >= ?", (day_ago,))
         failed = self._one("SELECT COUNT(*) AS n FROM actions WHERE status = 'failed' AND timestamp >= ?", (day_ago,))
         return {
@@ -77,39 +80,14 @@ class DashboardService:
             "total_size_mb": round(files["b"] / MB, 2),
             "total_size_bytes": files["b"],
             "files_indexed": self._indexed_count(),
-            "scans_today": runs_today["n"],
-            "files_checked_today": runs_today["seen"],
-            "files_changed_today": runs_today["changed"],
+            "scans_today": today["scans"],
+            "files_checked_today": today["files_checked"],
+            "files_changed_today": today["files_changed"],
             "pending_actions": self._count_actions("proposed"),
             "approved_waiting": self._count_actions("approved"),
             "errors_24h": scan_errors["n"] + failed["n"],
             "reclaimable_mb": reclaimable_mb,
         }
-
-    def _daily_series(self, days):
-        """One row per day (oldest first) with scans, files, events and actions; gaps are zero."""
-        start = (datetime.now(timezone.utc) - timedelta(days=days - 1)).date()
-        rows = {(start + timedelta(days=i)).isoformat(): self._empty_day(start + timedelta(days=i))
-                for i in range(days)}
-        queries = (
-            ("SELECT substr(started_at, 1, 10) AS d, COUNT(*) AS scans, SUM(files_seen) AS files_checked, "
-             "SUM(hashed_files) AS files_changed, SUM(errors) AS errors FROM scan_runs GROUP BY d"),
-            "SELECT substr(timestamp, 1, 10) AS d, COUNT(*) AS downloads FROM activity_events GROUP BY d",
-            "SELECT substr(timestamp, 1, 10) AS d, COUNT(*) AS proposals FROM actions GROUP BY d",
-            ("SELECT substr(decided_at, 1, 10) AS d, COUNT(*) AS actions_done FROM actions "
-             "WHERE status IN ('done', 'undone') AND decided_at IS NOT NULL GROUP BY d"),
-        )
-        for sql in queries:
-            for row in self.db._query_all(sql):
-                if row["d"] in rows:
-                    rows[row["d"]].update({k: (v or 0) for k, v in row.items() if k != "d"})
-        return list(rows.values())
-
-    @staticmethod
-    def _empty_day(day):
-        """A zero-filled row for a day with no activity."""
-        return {"date": day.isoformat(), "scans": 0, "files_checked": 0, "files_changed": 0,
-                "errors": 0, "downloads": 0, "proposals": 0, "actions_done": 0}
 
     def _actions_with_size(self, status, limit=50):
         """Actions with one status (newest first), each with the file size if known.

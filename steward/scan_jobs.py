@@ -5,6 +5,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from steward.scan_job_store import ScanJobStore
+
 
 class ScanBusyError(Exception):
     """Raised when a folder scan is requested while another one is still running."""
@@ -19,7 +21,7 @@ class FolderScanJobs:
 
     MAX_JOBS_KEPT = 20
 
-    def __init__(self, app, advisor, mapper, logger=None, run_inline=False):
+    def __init__(self, app, advisor, mapper, logger=None, run_inline=False, store=None):
         """Store services and the in-memory job registry.
 
         Args:
@@ -28,6 +30,7 @@ class FolderScanJobs:
             mapper: PathMapper that validates the folder typed by the user.
             logger: optional logger.
             run_inline: run jobs in the calling thread (used by tests).
+            store: optional ScanJobStore (SQLite history, built from app.db when omitted).
         """
         self.app = app
         self.advisor = advisor
@@ -36,6 +39,8 @@ class FolderScanJobs:
         self.run_inline = run_inline
         self.jobs = {}
         self.lock = threading.Lock()
+        # Finished jobs are also saved in SQLite so results survive an API restart
+        self.store = store or ScanJobStore(app.db)
 
     def start(self, raw_path, create_proposals=True, index_for_chat=False):
         """Validate the folder, register a job and start it. Returns the job dict.
@@ -52,6 +57,7 @@ class FolderScanJobs:
             job = self._new_job(raw_path, folder, bool(create_proposals), bool(index_for_chat))
             self.jobs[job["id"]] = job
             self._trim_history()
+        self.store.save(job)
         if self.run_inline:
             self._run(job)
         else:
@@ -66,13 +72,18 @@ class FolderScanJobs:
         """
         with self.lock:
             job = self.jobs.get(str(job_id))
-            return dict(job) if job else None
+            if job:
+                return dict(job)
+        return self.store.get(job_id)
 
     def list_recent(self, limit=10):
         """Return the most recent jobs (newest first) without their full results."""
         with self.lock:
-            jobs = sorted(self.jobs.values(), key=lambda j: j["created_at"], reverse=True)[: int(limit)]
-            return [{k: v for k, v in job.items() if k != "result"} for job in jobs]
+            merged = {job["id"]: dict(job) for job in self.jobs.values()}
+        for job in self.store.list_recent(limit):
+            merged.setdefault(job["id"], job)  # live jobs in memory win over saved copies
+        jobs = sorted(merged.values(), key=lambda j: j["created_at"], reverse=True)[: int(limit)]
+        return [{k: v for k, v in job.items() if k != "result"} for job in jobs]
 
     def _run(self, job):
         """Execute every step of one job, recording progress and any error."""
@@ -134,6 +145,8 @@ class FolderScanJobs:
             job.update({"status": status, "step": status, "result": result, "error": error,
                         "progress": 100 if status == "done" else job["progress"],
                         "finished_at": datetime.now(timezone.utc).isoformat()})
+            snapshot = dict(job)
+        self.store.save(snapshot)
 
     def _trim_history(self):
         """Forget the oldest finished jobs so memory stays small."""

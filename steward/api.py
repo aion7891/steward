@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from steward.chat_service import ChatService
 from steward.main import StewardApp
+from steward.path_mapper import PathMapper
 from steward.web_routes import WebRoutes
 
 
@@ -22,14 +23,16 @@ class StewardAPIServer:
         self.rag_index = rag_index or self.steward_app.get_rag_index()
         self.agents = self.steward_app.get_agents(model=model, rag_index=self.rag_index)
         self.workflows = self.steward_app.get_workflows(rag_index=self.rag_index)
-        self.chat = ChatService(self.steward_app, self.agents, self.rag_index)
+        # One mapper shows Docker paths (/data/...) as the user's Mac paths in every response
+        self.path_mapper = PathMapper(self.steward_app.config)
+        self.chat = ChatService(self.steward_app, self.agents, self.rag_index, mapper=self.path_mapper)
         self.fastapi_app = self._build_app()
 
     def _build_app(self):
         """Mount custom /steward/* routes onto an Agno AgentOS FastAPI application."""
         base_app = FastAPI(title="Steward API", version=str(self.steward_app.config.get("app.version", "0.9.0")))
         self._register_steward_routes(base_app)
-        self.web_routes = WebRoutes(self.steward_app)
+        self.web_routes = WebRoutes(self.steward_app, mapper=self.path_mapper)
         self.web_routes.register(base_app)
         # Only the Vite dev server needs CORS; in Docker nginx serves UI and API from one origin
         origins = os.getenv("STEWARD_CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173")
@@ -82,7 +85,8 @@ class StewardAPIServer:
 
         @api.get("/steward/actions")
         def list_actions(status=None, limit=50):
-            return {"status": "ok", "actions": self.steward_app.organizer.list_actions(status=status, limit=int(limit))}
+            actions = self.steward_app.organizer.list_actions(status=status, limit=int(limit))
+            return {"status": "ok", "actions": self.path_mapper.to_host_deep(actions)}
 
         @api.post("/steward/actions/{action_id}/approve")
         def approve_action(action_id, payload=Body(default=None)):

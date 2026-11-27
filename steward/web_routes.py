@@ -58,9 +58,9 @@ class WebRoutes:
         """GET /steward/dashboard: stats, daily series, to-do and suggestions."""
 
         @api.get("/steward/dashboard")
-        def dashboard(days=14):
+        def dashboard(days=14, tz_offset=0):
             try:
-                return {"status": "ok", **self.dashboard.summary(days=days)}
+                return {"status": "ok", **self.mapper.to_host_deep(self.dashboard.summary(days=days, tz_offset=tz_offset))}
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -84,18 +84,18 @@ class WebRoutes:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
             except ScanBusyError as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc
-            return {"status": "ok", "job": job}
+            return {"status": "ok", "job": self.mapper.to_host_deep(job)}
 
         @api.get("/steward/folders/scan/{job_id}")
         def folder_scan_status(job_id):
             job = self.jobs.get(job_id)
             if job is None:
                 raise HTTPException(status_code=404, detail=f"Unknown scan job: {job_id}")
-            return {"status": "ok", "job": job}
+            return {"status": "ok", "job": self.mapper.to_host_deep(job)}
 
         @api.get("/steward/folders/scans")
         def recent_folder_scans(limit=10):
-            return {"status": "ok", "jobs": self.jobs.list_recent(limit=int(limit))}
+            return {"status": "ok", "jobs": self.mapper.to_host_deep(self.jobs.list_recent(limit=int(limit)))}
 
     @staticmethod
     def _as_bool(value):

@@ -66,6 +66,9 @@ class TestDashboardRoute:
             response = client.get(f"/steward/dashboard?days={bad}")
             assert response.status_code == 400 and "days" in response.json()["detail"]
         assert len(client.get("/steward/dashboard?days=7").json()["daily"]) == 7
+        # The browser's time-zone offset is validated too
+        assert client.get("/steward/dashboard?tz_offset=abc").status_code == 400
+        assert client.get("/steward/dashboard?tz_offset=-330").status_code == 200
 
     def test_stats_and_todo_after_a_scan(self, tmp_path):
         """After a scan, today's row, the status cards and the to-do list are filled."""

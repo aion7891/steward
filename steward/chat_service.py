@@ -12,24 +12,31 @@ class ChatService:
     - "paused": an agent stopped to wait for an approval (not supported from chat yet)
     """
 
-    def __init__(self, steward_app, agents, rag_index):
+    def __init__(self, steward_app, agents, rag_index, mapper=None):
         """Store the services used to answer questions.
 
         Args:
             steward_app: StewardApp (for the OKF knowledge bundle).
             agents: StewardAgents holding the team and the chat model.
             rag_index: RAGIndex used for document passages.
+            mapper: optional PathMapper that shows Docker paths as Mac paths.
         """
         self.steward_app = steward_app
         self.agents = agents
         self.rag_index = rag_index
+        self.mapper = mapper
 
     def answer(self, message):
-        """Answer one question, with an OKF+RAG fallback if the model cannot call tools.
+        """Answer one question and show any Docker paths in it as the user's Mac paths.
 
         Args:
             message: the user's question (already checked to be non-empty).
         """
+        result = self._answer(message)
+        return self.mapper.to_host_deep(result) if self.mapper is not None else result
+
+    def _answer(self, message):
+        """Run the team, with an OKF+RAG fallback if the model cannot call tools."""
         okf_hits = self.steward_app.okf_bundle.search_concepts(message, limit=3)
         sources = [h["rel_path"] for h in okf_hits]
         try:

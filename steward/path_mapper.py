@@ -1,6 +1,7 @@
 """Validates folder paths typed by the user and maps Mac paths to Docker paths."""
 
 import os
+import re
 from pathlib import Path
 
 
@@ -87,6 +88,27 @@ class PathMapper:
             if text == container or text.startswith(container + "/"):
                 return host + text[len(container):]
         return text
+
+    def to_host_deep(self, value):
+        """Return a copy of value with every Docker path shown as the user's Mac path.
+
+        Works on nested dicts/lists and also rewrites paths inside sentences, such as
+        "Duplicate of /data/Documents/a.pdf" or a chat answer. Does nothing outside Docker.
+
+        Args:
+            value: any JSON-like value (dict, list, str, number, None).
+        """
+        if not self.mappings:
+            return value
+        if isinstance(value, dict):
+            return {key: self.to_host_deep(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self.to_host_deep(item) for item in value]
+        if isinstance(value, str):
+            for host, container in self.mappings:
+                # Only whole path prefixes: /data/Extra or /data/Extra/..., never /data/ExtraStuff
+                value = re.sub(re.escape(container) + r"(?=/|\b|$)", lambda _m, h=host: h, value)
+        return value
 
     def list_roots(self):
         """Return the folders Steward can scan, for quick-pick buttons in the UI."""

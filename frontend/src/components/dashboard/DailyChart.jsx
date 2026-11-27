@@ -26,7 +26,7 @@ const TOOLTIP_STYLE = {
 export default function DailyChart({ daily }) {
   const hasActivity = daily.some((day) => day.scans > 0 || day.files_checked > 0);
   return (
-    <Card title="Daily scan activity" subtitle={`Last ${daily.length} days (UTC)`}>
+    <Card title="Daily scan activity" subtitle={`Last ${daily.length} days (your local time)`}>
       {hasActivity ? (
         <div className="chart">
           <ResponsiveContainer width="100%" height={260}>

@@ -11,7 +11,9 @@ export function getHealth() {
 }
 
 export function getDashboard(days = 14) {
-  return request(`/steward/dashboard?days=${encodeURIComponent(days)}`);
+  // Send the browser's offset from UTC so "today" and the chart days match the user's clock
+  const tzOffset = new Date().getTimezoneOffset();
+  return request(`/steward/dashboard?days=${encodeURIComponent(days)}&tz_offset=${tzOffset}`);
 }
 
 export function getFolderRoots() {
