@@ -20,7 +20,7 @@ class AppConfig:
 
     DEFAULT_DATA = {
         "app": {
-            "name": "Steward", "version": "0.3.0", "environment": "development",
+            "name": "Steward", "version": "0.10.0", "environment": "development",
             "log_level": "INFO", "log_file": "steward.log",
             "log_max_bytes": 5242880, "log_backup_count": 3,
         },
@@ -38,7 +38,7 @@ class AppConfig:
             "large_file_mb": 100, "stale_days": 90, "debounce_seconds": 0.5,
         },
         "models": {
-            "provider": "ollama", "model_id": "gemma3:4b",
+            "provider": "ollama", "model_id": "gemma4",
             "host": "http://localhost:11434", "temperature": 0.2,
             "embedding_provider": "ollama", "embedding_model": "nomic-embed-text",
             "embedding_dimensions": 768,

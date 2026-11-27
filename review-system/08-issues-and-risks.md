@@ -1,33 +1,35 @@
 # 8. Issues and risks (ranked)
 
+> **Update (0.10.0, 27 Nov 2026):** the *Status* column shows what has been fixed since this review. See [11-whats-new-0.10.md](11-whats-new-0.10.md) for details.
+
 Each issue has: **plain-words** impact → **where** in the code → **evidence** → **fix**.
 Severity: 🔴 Critical (breaks a core promise) · 🟠 High (wrong results or data drift) · 🟡 Medium (quality, performance) · ⚪ Low (polish)
 
-| # | Severity | Issue | Area |
-|:-:|:-:|:--|:--|
-| 1 | 🔴 | Scheduled cleanup **approves its own proposals** | Safety / workflows |
-| 2 | 🔴 | Chat actions pause for approval, but **nothing can approve them** | Agents / API / UI |
-| 2b | 🔴 | Default model `gemma3:4b` **can't use tools**. Team sometimes routes Q&A to the wrong agent | AI |
-| 3 | 🟠 | Dry-run approval leaves rows stuck at `approved`; the same proposals are **re-created every run** | Organizer |
-| 4 | 🟠 | Deleted or moved files are **never removed** from SQLite, RAG, or OKF ("ghosts") | Scanner / data |
-| 5 | 🟠 | **Identical files erase each other** from the search index | RAG |
-| 6 | 🟠 | OKF "summaries" are **raw text copies** (privacy rule broken) | OKF / privacy |
-| 7 | 🟠 | Downloads watcher stops after logging: hard-coded **real-home** destinations, no proposal | Watcher |
-| 8 | 🟡 | ScanWorkflow **rebuilds the whole OKF bundle every hour**, re-reading every document | Performance |
-| 9 | 🟡 | No AI analysis step: Analyzer agent and `summarizer` never used | AI quality |
-| 10 | 🟡 | "Projects" = folder names; same-named folders **overwrite** each other; "Opened with" is alphabetical | OKF quality |
-| 11 | 🟡 | Pattern "observations" counts runs, not evidence; no "file opened" signal; reclaimable MB double-counted | Recommender |
-| 12 | 🟡 | API and worker **both write** the same ChromaDB and SQLite from two processes | Docker / reliability |
-| 13 | 🟡 | No crash resume, no Ollama retry, no cloud → local fallback | Resilience |
-| 14 | 🟡 | "Sources" shown in the UI aren't the agent's real sources | Chat UX |
-| 15 | 🟡 | Settings API: `"false"` → True, wipes config comments, no reload, lost in Docker | API |
-| 16 | 🟡 | Protected paths only block *actions*; protected files are still read, embedded, and summarised | Privacy |
-| 17 | 🟡 | Prompt-injection surface: agents that read files can also **write** OKF | Security |
-| 18 | ⚪ | Start-up and OKF search read every note from disk (slow with 10k+ notes) | Performance |
-| 19 | ⚪ | Purge, memory expiry, and preference capture are never wired in; first scan waits 60 min | Ops |
-| 20 | ⚪ | Docker and local runs share `./data` (mixed `/data/...` and `/Users/...` paths) | Docker |
-| 21 | ⚪ | Tests miss multi-step flows; 5 files exceed 200 lines; README says "Done" for everything | Quality |
-| 22 | ⚪ | Small nits (duplicate env line, Agno DB-id warning, stale docstring) | Polish |
+| # | Severity | Issue | Area | Status (0.10.0) |
+|:-:|:-:|:--|:--|:--|
+| 1 | 🔴 | Scheduled cleanup **approves its own proposals** | Safety / workflows | ✅ Fixed: cleanup only proposes (`ProposalService`) |
+| 2 | 🔴 | Chat actions pause for approval, but **nothing can approve them** | Agents / API / UI | ✅ Fixed: approval card + `/chat/{run_id}/decision` |
+| 2b | 🔴 | Default model `gemma3:4b` **can't use tools**. Team sometimes routes Q&A to the wrong agent | AI | 🟡 Better: routing 7/8 correct; Settings refuses no-tool models; default model changed in 0.10.0 |
+| 3 | 🟠 | Dry-run approval leaves rows stuck at `approved`; the same proposals are **re-created every run** | Organizer | ✅ Fixed: dedupe + **Run now** for approved actions |
+| 4 | 🟠 | Deleted or moved files are **never removed** from SQLite, RAG, or OKF ("ghosts") | Scanner / data | 🟡 Partly: findings and proposals skip deleted files; rows still stay in SQLite/RAG/OKF |
+| 5 | 🟠 | **Identical files erase each other** from the search index | RAG | ⏳ Open |
+| 6 | 🟠 | OKF "summaries" are **raw text copies** (privacy rule broken) | OKF / privacy | ⏳ Open |
+| 7 | 🟠 | Downloads watcher stops after logging: hard-coded **real-home** destinations, no proposal | Watcher | ⏳ Open |
+| 8 | 🟡 | ScanWorkflow **rebuilds the whole OKF bundle every hour**, re-reading every document | Performance | ⏳ Open |
+| 9 | 🟡 | No AI analysis step: Analyzer agent and `summarizer` never used | AI quality | ⏳ Open |
+| 10 | 🟡 | "Projects" = folder names; same-named folders **overwrite** each other; "Opened with" is alphabetical | OKF quality | ⏳ Open |
+| 11 | 🟡 | Pattern "observations" counts runs, not evidence; no "file opened" signal; reclaimable MB double-counted | Recommender | 🟡 Partly: folder/dashboard space counts each file once; pattern counter still inflates |
+| 12 | 🟡 | API and worker **both write** the same ChromaDB and SQLite from two processes | Docker / reliability | ⏳ Open |
+| 13 | 🟡 | No crash resume, no Ollama retry, no cloud → local fallback | Resilience | 🟡 Partly: indexing and chat survive Ollama outages; scan jobs persisted; no crash resume |
+| 14 | 🟡 | "Sources" shown in the UI aren't the agent's real sources | Chat UX | ✅ Fixed: sources come from the agents' real lookups |
+| 15 | 🟡 | Settings API: `"false"` → True, wipes config comments, no reload, lost in Docker | API | ✅ Fixed: override file, bool parsing, live reload, `.env` locks (still no auth: local-only) |
+| 16 | 🟡 | Protected paths only block *actions*; protected files are still read, embedded, and summarised | Privacy | ⏳ Open |
+| 17 | 🟡 | Prompt-injection surface: agents that read files can also **write** OKF | Security | 🟡 Partly: dry-run enforced in the tool; chat neutralizes links; agents still have OKF write tools |
+| 18 | ⚪ | Start-up and OKF search read every note from disk (slow with 10k+ notes) | Performance | ⏳ Open |
+| 19 | ⚪ | Purge, memory expiry, and preference capture are never wired in; first scan waits 60 min | Ops | 🟡 Partly: worker reloads settings; purge/expiry/first-scan timing still open |
+| 20 | ⚪ | Docker and local runs share `./data` (mixed `/data/...` and `/Users/...` paths) | Docker | 🟡 Partly: Mac paths shown everywhere; data folder still shared between modes |
+| 21 | ⚪ | Tests miss multi-step flows; 5 files exceed 200 lines; README says "Done" for everything | Quality | 🟡 Partly: 85 + 22 tests incl. multi-step flows; older 200+ line files remain |
+| 22 | ⚪ | Small nits (duplicate env line, Agno DB-id warning, stale docstring) | Polish | 🟡 Partly: duplicate `.env.example` line removed |
 
 ---
 

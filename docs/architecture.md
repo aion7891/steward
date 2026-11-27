@@ -6,8 +6,9 @@ Steward is a local-first, multi-agent AI assistant that monitors your machine, u
 
 ```mermaid
 flowchart TB
-    User([User]) --> UI[Local Chat UI - Streamlit]
+    User([User]) --> UI["Web app - React, nginx :8080"]
     UI --> API[AgentOS FastAPI Server]
+    API --> WebSvc["Web services<br/>dashboard, folder scans, settings, reports, chat approvals"]
     API --> Team[Agno Orchestrator Team]
 
     Team --> A1[ScannerAgent]
@@ -53,3 +54,4 @@ flowchart TB
 | **7** | Recommendations and reports | Done | [phase-7-reports.md](phase-7-reports.md) | [demo_phase7_reports.py](../examples/demo_phase7_reports.py) |
 | **8** | Chat UI (AgentOS plus local Streamlit UI) | Done | [phase-8-ui.md](phase-8-ui.md) | [demo_phase8_api.py](../examples/demo_phase8_api.py) |
 | **9** | Docker deployment | Done | [phase-9-docker.md](phase-9-docker.md) | [demo_phase9_worker.py](../examples/demo_phase9_worker.py) |
+| **10** | Professional web UI (0.10.0) | Done | [phase-10-web-ui.md](phase-10-web-ui.md) · [User Guide](user-guide/README.md) · [Developer Guide](developer-guide/README.md) | `docker compose up -d` → http://127.0.0.1:8080 |

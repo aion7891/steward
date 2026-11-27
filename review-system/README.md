@@ -4,6 +4,11 @@
 > **Compared against:** `Steward-System-Design.pdf` (the PRD, 21 pages) and `project-skill.md`
 > **Method:** every source file was read line by line, the 37 automated tests were run, and the whole system was tested live on a fake sample folder with real local AI models (Ollama).
 
+> 🆕 **Update, 27 Nov 2026 (Steward 0.10.0):** a new web app, chat approvals, real chat sources and
+> safe settings were added, and the most serious issues below are now fixed. Start with
+> **[11-whats-new-0.10.md](11-whats-new-0.10.md)** for what changed and the updated scorecard. The rest of
+> this folder is the original review (still accurate for the parts not mentioned there).
+
 ---
 
 ## Start here
@@ -22,6 +27,7 @@ This folder explains **what Steward is, how it works inside, how to use it, and 
 | 8 | [08-issues-and-risks.md](08-issues-and-risks.md) | See every bug and risk found, ranked by severity, with the fix |
 | 9 | [09-improvement-roadmap.md](09-improvement-roadmap.md) | Get a step-by-step fix plan plus AI/ML upgrades |
 | 10 | [10-explain-to-non-tech.md](10-explain-to-non-tech.md) | Get a ready-made script and FAQ for explaining Steward to anyone |
+| 11 | [11-whats-new-0.10.md](11-whats-new-0.10.md) | **What changed in 0.10.0**: fixed issues, new web app, updated scorecard |
 | — | [demo/](demo/) | Rerun my test yourself (sample folder generator + demo config + script) |
 
 ---

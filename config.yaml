@@ -3,7 +3,7 @@
 
 app:
   name: "Steward"
-  version: "0.9.0"
+  version: "0.10.0"
   environment: "development"
   log_level: "INFO"
   log_file: "steward.log"
@@ -44,7 +44,7 @@ scanner:
 models:
   # Supported providers: ollama, openai, anthropic, gemini
   provider: "ollama"
-  model_id: "gemma3:4b"
+  model_id: "gemma4"  # must support tool calling (gemma3:4b does not)
   host: "http://localhost:11434"
   temperature: 0.2
   embedding_provider: "ollama"

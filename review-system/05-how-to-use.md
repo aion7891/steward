@@ -68,56 +68,27 @@ uv run --project ../.. steward --config config.demo.yaml --scan
 
 > ℹ️ There's **no CLI command to approve, reject, or list actions**, and none to empty the recycle bin. Use the web UI, the API (below), or Python.
 
-## 5.5 Running the web app (local, no Docker)
+## 5.5 The web app (0.10.0)
 
-Open three terminals:
-
-```bash
-# Terminal 1: the API (agents, team, workflows + /steward/* routes)
-uv run python -m steward.api                 # http://127.0.0.1:7777
-# Terminal 2: the web page
-uv run streamlit run steward/ui.py           # http://127.0.0.1:8501
-# Terminal 3 (optional): the background scheduler + Downloads watcher
-uv run python -m steward.worker
-```
-
-### What's on the web page
-
-```mermaid
-flowchart LR
-    subgraph Sidebar
-        M1["OKF Concepts / Graph Links"]
-        M2["Pending Approvals"]
-        M3["Model + Dry-Run status"]
-        B1["▶ Run Scan Workflow Now"]
-        B2["▶ Generate Weekly Report"]
-    end
-    subgraph Tabs
-        T1["💬 Chat"]
-        T2["✅ Approvals & Actions<br/>Approve / Reject (proposed)<br/>Undo (done)"]
-        T3["📊 Reports & Suggestions"]
-        T4["⚙️ Settings<br/>provider · model · dry-run · folders"]
-    end
-```
-
-1. **Chat:** type a question. Sources are listed under the answer (but see issue #14).
-2. **Approvals & Actions:** a card for every action. Only cards with status `proposed` have **Approve / Reject**, and only `done` cards have **Undo**.
-   - To get proposals that work, ask in chat *"organize my Downloads by type"* (the OrganizerAgent's `organize_folder` tool creates real `proposed` rows), or create them yourself (there's no API route for this):
-     `uv run python -c "from steward.main import StewardApp as A; print(len(A().organizer.plan_organize('~/Downloads', strategy='type')))"`
-   - Clicking **Approve** while dry-run is on does nothing on disk, and the card then gets stuck as `approved` (issue #3).
-3. **Reports & Suggestions:** current suggestions + previews of past reports.
-4. **Settings:** change model, dry-run, folders. ⚠️ Saving rewrites `config.yaml` and **removes all its comments** (issue #15). The model change only takes effect after restarting the API.
-
-### Useful API calls (for testing)
+> **Updated 27 Nov 2026.** Steward now has a full web app: **Dashboard, Scan a folder, Chat,
+> Reports and Settings**. It replaces the Streamlit page described in the original review.
 
 ```bash
-curl -s localhost:7777/steward/health | python -m json.tool
-curl -s "localhost:7777/steward/actions?status=proposed"
-curl -s -X POST localhost:7777/steward/actions/7/approve -H 'content-type: application/json' -d '{"execute": true, "dry_run": false}'
-curl -s -X POST localhost:7777/steward/actions/7/undo
-curl -s -X POST localhost:7777/steward/chat -H 'content-type: application/json' -d '{"message":"How much is due on the Acme invoice?"}'
-open http://127.0.0.1:7777/docs      # interactive API page (FastAPI)
+docker compose up -d --build      # then open http://127.0.0.1:8080
 ```
+
+Step-by-step instructions with screenshots: **[User Guide](../docs/user-guide/README.md)**.
+
+| I want to… | Where |
+|:--|:--|
+| See today's scans and decide on suggestions | **Dashboard** → To-do (Approve / Reject), Recently completed (Undo) |
+| Check one folder right now | **Scan a folder** → type the path → Scan |
+| Ask about my documents, or ask Steward to tidy up | **Chat** (file changes show an approval card) |
+| Read or download a report | **Reports** |
+| Turn practice mode off, change the AI model, change watched folders | **Settings** |
+
+For development without Docker: `uv run python -m steward.api` and `cd frontend && npm run dev`
+(http://127.0.0.1:5173). The old Streamlit page still exists: `docker compose --profile legacy up -d`.
 
 ## 5.6 Always-on with Docker
 
