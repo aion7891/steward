@@ -1,7 +1,7 @@
 // One function per Steward API route. Pages import these instead of calling fetch,
 // so every URL and request body lives in this single file.
 
-import { request } from "./client.js";
+import { apiUrl, request } from "./client.js";
 
 // Chat answers from a local model can take 20-60 s, so chat gets a long timeout.
 const CHAT_TIMEOUT_MS = 180000;
@@ -93,4 +93,22 @@ export function saveSettings(changes) {
 /** Installed Ollama models and whether each can use tools. */
 export function getModels() {
   return request("/steward/models");
+}
+
+/** Reports newest first; each has formats.markdown / formats.html with an id. */
+export function getReportLibrary() {
+  return request("/steward/reports/library");
+}
+
+export function generateReport(period = "weekly") {
+  return request("/steward/reports/generate", { method: "POST", body: { period }, timeoutMs: 120000 });
+}
+
+export function getReport(reportId) {
+  return request(`/steward/reports/${encodeURIComponent(reportId)}`);
+}
+
+/** Link that downloads one report file. */
+export function reportDownloadUrl(reportId) {
+  return apiUrl(`/steward/reports/${encodeURIComponent(reportId)}/download`);
 }

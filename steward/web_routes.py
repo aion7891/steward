@@ -1,12 +1,14 @@
 """HTTP routes used by the web frontend: dashboard stats and "scan a folder" jobs."""
 
 from fastapi import Body, HTTPException
+from fastapi.responses import FileResponse
 
 from steward.config import AppConfig
 from steward.dashboard import DashboardService
 from steward.folder_advisor import FolderAdvisor
 from steward.ollama_models import OllamaModels
 from steward.path_mapper import PathMapper
+from steward.report_service import ReportService
 from steward.scan_jobs import FolderScanJobs, ScanBusyError
 from steward.settings_service import SettingsService
 
@@ -30,6 +32,7 @@ class WebRoutes:
         self.jobs = FolderScanJobs(app, self.advisor, self.mapper, run_inline=run_inline)
         self.ollama = OllamaModels(app.config.get("models.host"))
         self.settings = SettingsService(app.config, self.mapper, self.ollama, on_model_change)
+        self.reports = ReportService(app)
 
     def register(self, api):
         """Attach all web routes to a FastAPI app.
@@ -41,6 +44,7 @@ class WebRoutes:
         self._register_folder_scan(api)
         self._register_execute(api)
         self._register_settings(api)
+        self._register_reports(api)
 
     def _register_execute(self, api):
         """POST /steward/actions/{id}/execute: run an action that is already approved.
@@ -121,6 +125,39 @@ class WebRoutes:
         @api.get("/steward/models")
         def list_models():
             return {"status": "ok", "providers": list(AppConfig.VALID_PROVIDERS), "ollama": self.ollama.list_models()}
+
+    def _register_reports(self, api):
+        """Report library, generate now, read one report, download one report file."""
+
+        @api.get("/steward/reports/library")  # registered before /{report_id} on purpose
+        def report_library(limit=30):
+            return {"status": "ok", "reports": self.reports.library(limit=int(limit))}
+
+        @api.post("/steward/reports/generate")
+        def generate_report(payload=Body(default=None)):
+            try:
+                return self.reports.generate((payload or {}).get("period", "weekly"))
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        @api.get("/steward/reports/{report_id}")
+        def read_report(report_id):
+            return {"status": "ok", "report": self._report_call(self.reports.read, report_id)}
+
+        @api.get("/steward/reports/{report_id}/download")
+        def download_report(report_id):
+            path, media_type, name = self._report_call(self.reports.file_for_download, report_id)
+            return FileResponse(path, media_type=media_type, filename=name)
+
+    @staticmethod
+    def _report_call(method, report_id):
+        """Run a ReportService lookup and turn its errors into 404 / 400 responses."""
+        try:
+            return method(report_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc.args[0])) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @staticmethod
     def _as_bool(value):

@@ -5,6 +5,11 @@
 const DEFAULT_TIMEOUT_MS = 30000;
 const API_BASE = import.meta.env?.VITE_API_BASE || "";
 
+/** Full URL for an API path, for plain links such as file downloads. */
+export function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
+
 /** An error with a user-friendly message and the HTTP status (0 = network problem). */
 export class ApiError extends Error {
   constructor(message, status) {

@@ -16,12 +16,12 @@ venv/
 *.db
 *.sqlite
 *.sqlite3
-data/
-vector_store/
-chroma/
-knowledge/
-reports/
-host-inventory/
+/data/
+/vector_store/
+/chroma/
+/knowledge/
+/reports/
+/host-inventory/
 
 # Local feature plans (feature-dev workflow notes, never committed)
 features/

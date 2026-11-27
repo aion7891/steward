@@ -9,6 +9,7 @@ import { Loading } from "./components/ui/Spinner.jsx";
 const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
 const ScanPage = lazy(() => import("./pages/ScanPage.jsx"));
 const ChatPage = lazy(() => import("./pages/ChatPage.jsx"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage.jsx"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage.jsx"));
 
 function Page({ children }) {
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/dashboard" element={<Page><DashboardPage /></Page>} />
         <Route path="/scan" element={<Page><ScanPage /></Page>} />
         <Route path="/chat" element={<Page><ChatPage /></Page>} />
+        <Route path="/reports" element={<Page><ReportsPage /></Page>} />
         <Route path="/settings" element={<Page><SettingsPage /></Page>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
