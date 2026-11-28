@@ -127,7 +127,7 @@ class WebRoutes:
             return {"status": "ok", "providers": list(AppConfig.VALID_PROVIDERS), "ollama": self.ollama.list_models()}
 
     def _register_reports(self, api):
-        """Report library, generate now, read one report, download one report file."""
+        """Report library, generate now, delete one report, read one report, download one report file."""
 
         @api.get("/steward/reports/library")  # registered before /{report_id} on purpose
         def report_library(limit=30):
@@ -139,6 +139,10 @@ class WebRoutes:
                 return self.reports.generate((payload or {}).get("period", "weekly"))
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        @api.delete("/steward/reports/library/{key}")
+        def delete_report(key):
+            return self._report_call(self.reports.delete, key)
 
         @api.get("/steward/reports/{report_id}")
         def read_report(report_id):

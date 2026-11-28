@@ -51,7 +51,7 @@ function TargetRow({ target, summary, pending, busy, onAsk, onConfirm, onCancel 
             <Button size="sm" icon={Eraser} disabled={!count || busy} onClick={() => onAsk(target.key, false)}>Clear</Button>
           )}
           <Button size="sm" variant="danger" icon={Trash2} disabled={!count || busy} onClick={() => onAsk(target.key, true)}>
-            {target.backup ? "Delete for good" : "Empty for good"}
+            {target.hardLabel || "Delete for good"}
           </Button>
         </div>
       </div>

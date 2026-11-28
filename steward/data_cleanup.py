@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from steward.data_backups import DataBackups
+from steward.data_records import DataRecords
 
 
 class DataCleanup:
@@ -12,10 +13,11 @@ class DataCleanup:
     recycle bin can only be emptied for good (its backup would be the recycle bin itself).
     """
 
-    TARGETS = ("chats", "knowledge", "topics", "recycle")
+    TARGETS = ("chats", "knowledge", "topics", "recycle") + DataRecords.TARGETS
+    PERMANENT = ("recycle",) + DataRecords.TARGETS  # no backup possible or needed: always "for good"
     BUSY = "Steward is still answering in the chat. Wait for the answer (or press Stop), then clear the chats."
 
-    def __init__(self, app, chat_store, session_db, is_busy=None, forget_pending=None):
+    def __init__(self, app, chat_store, session_db, is_busy=None, forget_pending=None, records=None):
         """Remember where each kind of data lives.
 
         Args:
@@ -24,7 +26,9 @@ class DataCleanup:
             session_db: function returning Agno's SqliteDb (the AI's own memory of each chat).
             is_busy: optional function returning True while a chat answer is running.
             forget_pending: optional function that drops approval cards still waiting.
+            records: optional DataRecords (file index, actions, search index, reports).
         """
+        self.records = records or DataRecords(app)
         self.bundle = app.okf_bundle
         self.okf_root = Path(app.okf_bundle.root_dir)
         self.recycle = app.organizer.recycle
@@ -45,6 +49,7 @@ class DataCleanup:
             "topics": {"count": len(topics), "size_bytes": sum(p.stat().st_size for p in topics)},
             "recycle": {"count": len(recycled), "size_bytes": sum(i.get("size_bytes") or 0 for i in recycled)},
             "backups": self.backups.list(),
+            **self.records.summary(),
         }
 
     def clear(self, target, hard=False):
@@ -59,6 +64,8 @@ class DataCleanup:
         """
         if target not in self.TARGETS:
             raise ValueError(f"Unknown data '{target}'. Use one of: {', '.join(self.TARGETS)}.")
+        if target in DataRecords.TARGETS:
+            return self.records.clear(target)
         if target == "recycle":
             return self._empty_recycle()
         if target == "chats":

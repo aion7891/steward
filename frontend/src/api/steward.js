@@ -151,6 +151,11 @@ export function getReport(reportId) {
 }
 
 /** Link that downloads one report file. */
+/** Delete one report (its Markdown and HTML copy) by its library key. */
+export function deleteReport(key) {
+  return request(`/steward/reports/library/${encodeURIComponent(key)}`, { method: "DELETE" });
+}
+
 export function reportDownloadUrl(reportId) {
   return apiUrl(`/steward/reports/${encodeURIComponent(reportId)}/download`);
 }

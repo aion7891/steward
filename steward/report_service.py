@@ -70,6 +70,41 @@ class ReportService:
         message = f"New {period} report ready with {count} suggestion{'s' if count != 1 else ''}."
         return {"status": "ok", "message": message, "report": entry}
 
+    def delete(self, key):
+        """Delete one report (its Markdown and HTML copy) and return {"status", "message"}.
+
+        Args:
+            key: the report's library key, for example "steward_weekly_20261127-085222".
+        Raises:
+            KeyError: when no report has that key.
+        """
+        rows = [r for r in self.app.db.list_reports(limit=100000) if Path(r["path"]).stem == str(key)]
+        if not rows:
+            raise KeyError(f"Report {key} was not found. It may have been deleted already.")
+        self._remove(rows)
+        return {"status": "ok", "message": "Deleted the report and its files."}
+
+    def delete_all(self):
+        """Delete every report record and its files; return how many reports there were."""
+        rows = self.app.db.list_reports(limit=100000)
+        count = len({Path(r["path"]).stem for r in rows})
+        self._remove(rows)
+        return count
+
+    def count(self):
+        """Return (number of reports, bytes of their files)."""
+        rows = self.app.db.list_reports(limit=100000)
+        size = sum(Path(r["path"]).stat().st_size for r in rows if self._is_safe(r["path"]) and Path(r["path"]).is_file())
+        return len({Path(r["path"]).stem for r in rows}), size
+
+    def _remove(self, rows):
+        """Delete report files (only inside the reports folder) and their records."""
+        for row in rows:
+            path = Path(row["path"])
+            if self._is_safe(path) and path.is_file():
+                path.unlink()
+            self.app.db._execute("DELETE FROM reports WHERE id = ?", (int(row["id"]),))
+
     def _locate(self, report_id):
         """Find a report file by id and make sure it is a real file inside the reports folder."""
         try:
