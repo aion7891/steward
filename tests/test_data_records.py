@@ -100,3 +100,56 @@ class TestReports:
         done = clear(client, "reports", **DELETE).json()
         assert done["removed"] == 2 and outside.exists()
         assert client.get("/steward/data").json()["reports"]["count"] == 0
+
+
+def everything_filled(tmp_path):
+    """filled() plus a chat, a knowledge note, a backup and a recycled file."""
+    app, server, client, report = filled(tmp_path)
+    server.chat_routes.store.add_message("web-1", "user", "hello")
+    note = app.okf_bundle.root_dir / "memory" / "patterns" / "peak.md"
+    note.parent.mkdir(parents=True, exist_ok=True)
+    note.write_text("---\ntitle: Peak Activity on Saturday\ntype: pattern\n---\nBusy on Saturdays.\n", encoding="utf-8")
+    server.chat_routes.store.add_message("web-2", "user", "second chat")
+    client.post("/steward/data/clear", json={"target": "chats"})  # leaves one backup
+    server.chat_routes.store.add_message("web-3", "user", "after the backup")
+    junk = tmp_path / "junk.txt"
+    junk.write_text("old", encoding="utf-8")
+    app.organizer.recycle.move_to_recycle(junk)
+    return app, server, client
+
+
+class TestDeleteEverything:
+    """One button: everything goes (Dashboard empty), recycle bin and backups only when asked."""
+
+    def test_needs_delete_and_waits_for_running_work(self, tmp_path):
+        _, server, client = everything_filled(tmp_path)
+        assert client.post("/steward/data/everything", json={}).status_code == 400
+        server.web_routes.jobs.jobs["busy"] = {"id": "busy", "status": "running", "created_at": "now"}
+        busy = client.post("/steward/data/everything", json=DELETE)
+        assert busy.status_code == 409 and "folder scan is running" in busy.json()["detail"]
+        assert client.get("/steward/data").json()["chats"]["count"] == 1  # nothing was deleted
+
+    def test_everything_but_the_recycle_bin_and_backups(self, tmp_path):
+        _, _, client = everything_filled(tmp_path)
+        done = client.post("/steward/data/everything", json=DELETE).json()
+        assert done["removed"]["chats"] == 1 and done["removed"]["index"] >= 2 and "recycle" not in done["removed"]
+        assert done["message"].endswith("Kept: the recycle bin and backups, and your archives.")
+        data = client.get("/steward/data").json()
+        for key in ("chats", "knowledge", "index", "actions", "search", "reports"):
+            assert data[key]["count"] == 0, key
+        assert data["recycle"]["count"] == 1 and len(data["backups"]) == 1
+        dash = client.get("/steward/dashboard?days=7&tz_offset=0").json()
+        assert dash["status"]["files_tracked"] == 0 and dash["todo"] == [] and dash["patterns"] == []
+        assert client.get("/steward/health").json()["pending_actions"] == 0
+
+    def test_with_recycle_bin_and_backups(self, tmp_path):
+        _, _, client = everything_filled(tmp_path)
+        body = {**DELETE, "empty_recycle": True, "delete_backups": True}
+        done = client.post("/steward/data/everything", json=body).json()
+        assert done["removed"]["recycle"] == 1 and done["removed"]["backups"] == 1
+        assert done["message"].endswith("Your archives were kept.")
+        data = client.get("/steward/data").json()
+        assert data["recycle"]["count"] == 0 and data["backups"] == []
+        # Nothing left to keep: the message doesn't claim backups or a recycle bin were kept
+        again = client.post("/steward/data/everything", json=DELETE).json()
+        assert again["message"].endswith("Your archives were kept.") and "Kept:" not in again["message"]

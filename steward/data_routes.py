@@ -7,7 +7,7 @@ from steward.data_records import DataRecords
 
 
 class DataRoutes:
-    """Registers /steward/data (summary), /steward/data/clear and /steward/data/backups/{id}/...
+    """Registers /steward/data (summary), /data/clear, /data/everything and /data/backups/{id}/...
 
     Anything that deletes for good (hard clear, emptying the recycle bin, deleting a backup) needs
     {"confirm": "DELETE"} in the request, so it can never happen by one stray click or request.
@@ -51,6 +51,16 @@ class DataRoutes:
                 self._check_confirm(data)
             try:
                 return self.cleanup.clear(target, hard=hard)
+            except RuntimeError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+        @api.post("/steward/data/everything")
+        def delete_everything(payload=Body(...)):
+            data = payload if isinstance(payload, dict) else {}
+            self._check_confirm(data)
+            try:
+                return self.cleanup.delete_everything(empty_recycle=data.get("empty_recycle") is True,
+                                                      delete_backups=data.get("delete_backups") is True)
             except RuntimeError as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc
 

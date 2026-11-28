@@ -1,9 +1,11 @@
 // Page frame shared by every route: sidebar, top bar, warnings, then the page itself.
 // It polls /steward/health and hands the result to pages via the router's outlet context.
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import { getHealth } from "../../api/steward.js";
 import { usePolling } from "../../hooks/usePolling.js";
+import { onDataChanged } from "../../utils/dataEvents.js";
 import Alert from "../ui/Alert.jsx";
 import Sidebar from "./Sidebar.jsx";
 import TopBar from "./TopBar.jsx";
@@ -40,7 +42,10 @@ function GlobalWarnings({ health, error }) {
 }
 
 export default function AppShell() {
-  const { data: health, error } = usePolling(getHealth, HEALTH_INTERVAL_MS);
+  // Reload health at once when data changed (for example the "to review" badge after Delete everything)
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => onDataChanged(() => setRefreshKey((n) => n + 1)), []);
+  const { data: health, error } = usePolling(getHealth, HEALTH_INTERVAL_MS, true, refreshKey);
   return (
     <div className="app">
       <Sidebar />

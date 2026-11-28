@@ -179,3 +179,10 @@ export function restoreBackup(backupId) {
 export function deleteBackup(backupId, confirm) {
   return request(`/steward/data/backups/${encodeURIComponent(backupId)}/delete`, { method: "POST", body: { confirm } });
 }
+
+/** Delete all of Steward's own data (needs confirm "DELETE"); recycle bin and backups only when asked. */
+export function deleteEverything({ emptyRecycle = false, deleteBackups = false, confirm }) {
+  return request("/steward/data/everything", {
+    method: "POST", body: { confirm, empty_recycle: Boolean(emptyRecycle), delete_backups: Boolean(deleteBackups) },
+  });
+}

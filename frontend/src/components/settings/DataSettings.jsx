@@ -3,36 +3,15 @@
 import { ArchiveRestore, Eraser, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { clearData, deleteBackup, getDataSummary, restoreBackup } from "../../api/steward.js";
+import { clearData, deleteBackup, deleteEverything, getDataSummary, restoreBackup } from "../../api/steward.js";
+import { announceDataChanged } from "../../utils/dataEvents.js";
 import { formatBytes, formatDateTime } from "../../utils/format.js";
 import Alert from "../ui/Alert.jsx";
 import Button from "../ui/Button.jsx";
 import Card from "../ui/Card.jsx";
-import { canConfirm, confirmText, CONFIRM_WORD, countOf, plural, TARGETS } from "./dataCleanup.js";
-
-function ConfirmBox({ text, hard, busy, onConfirm, onCancel }) {
-  const [typed, setTyped] = useState("");
-  const mode = hard ? "hard" : "clear";
-  return (
-    <div className={`confirm-box ${hard ? "confirm-box--danger" : ""}`} role="alertdialog" aria-label="Please confirm">
-      <p>{text}</p>
-      {hard && (
-        <label className="confirm-box__type">
-          <span>Type <strong>{CONFIRM_WORD}</strong> to confirm</span>
-          <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus autoComplete="off"
-            aria-label={`Type ${CONFIRM_WORD} to confirm`} />
-        </label>
-      )}
-      <div className="row">
-        <Button variant={hard ? "danger" : "primary"} size="sm" loading={busy} disabled={!canConfirm(mode, typed)}
-          onClick={() => onConfirm(typed.trim())}>
-          {hard ? "Delete for good" : "Yes, clear"}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy}>Cancel</Button>
-      </div>
-    </div>
-  );
-}
+import ConfirmBox from "./ConfirmBox.jsx";
+import { confirmText, countOf, plural, TARGETS } from "./dataCleanup.js";
+import EverythingPanel from "./EverythingPanel.jsx";
 
 function TargetRow({ target, summary, pending, busy, onAsk, onConfirm, onCancel }) {
   const count = countOf(summary, target.key);
@@ -109,6 +88,7 @@ export default function DataSettings({ onChatsChanged }) {
       const result = await action();
       setNotice({ tone: "success", text: result.message });
       setPending(null);
+      announceDataChanged();  // e.g. the "to review" badge refreshes at once
       if (after) after();
     } catch (err) {
       setNotice({ tone: "danger", text: err.message });
@@ -119,7 +99,9 @@ export default function DataSettings({ onChatsChanged }) {
   }
 
   function confirm(typed) {
-    if (pending.backupId) {
+    if (pending.everything) {
+      run(() => deleteEverything(typed), onChatsChanged);  // typed = {emptyRecycle, deleteBackups, confirm}
+    } else if (pending.backupId) {
       run(() => deleteBackup(pending.backupId, typed));
     } else {
       const key = pending.key;
@@ -132,6 +114,8 @@ export default function DataSettings({ onChatsChanged }) {
     <Card title="Data & cleanup" subtitle="Steward's own data. Files in your folders are never touched here.">
       <div className="stack">
         {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
+        <EverythingPanel summary={summary} busy={busy} asking={Boolean(pending && pending.everything)}
+          onAsk={() => setPending({ everything: true })} onCancel={cancel} onConfirm={confirm} />
         {TARGETS.map((target) => (
           <TargetRow key={target.key} target={target} summary={summary} pending={pending} busy={busy}
             onAsk={(key, hard) => setPending({ key, hard })} onConfirm={confirm} onCancel={cancel} />

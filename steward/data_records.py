@@ -57,6 +57,12 @@ class DataRecords:
         removed, message = getattr(self, f"_clear_{target}")()
         return {"status": "ok", "removed": removed, "backup": None, "message": message}
 
+    def busy_reason(self):
+        """Why the records can't be cleared right now (a folder scan runs), or None."""
+        if self.scan_jobs is not None and self.scan_jobs.busy():
+            return "A folder scan is running. Wait for it to finish, then delete the scan history."
+        return None
+
     def _clear_index(self):
         """File index and scan history; the next scan rebuilds them."""
         if self.scan_jobs is not None:

@@ -148,6 +148,11 @@ class FolderScanJobs:
             snapshot = dict(job)
         self.store.save(snapshot)
 
+    def busy(self):
+        """True while a folder scan is queued or running."""
+        with self.lock:
+            return any(job["status"] in ("queued", "running") for job in self.jobs.values())
+
     def forget_all(self):
         """Forget every finished folder scan (Settings → Data & cleanup); refused while one runs."""
         with self.lock:

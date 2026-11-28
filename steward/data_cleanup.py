@@ -72,6 +72,36 @@ class DataCleanup:
             return self._clear_chats(hard)
         return self._clear_notes(target, hard)
 
+    def delete_everything(self, empty_recycle=False, delete_backups=False):
+        """Delete all of Steward's own data for good; Steward then starts fresh with the next scan.
+
+        Chats, knowledge notes, the file index and scans, actions, the search index and reports go;
+        the recycle bin and backups only when asked. Archives (the user's zipped files) never.
+        Args:
+            empty_recycle: also empty the recycle bin.
+            delete_backups: also delete the backups made by "Clear".
+        Raises:
+            RuntimeError: when a chat answer or a folder scan is running (nothing is deleted then).
+        """
+        reason = self.BUSY if self.is_busy() else self.records.busy_reason()
+        if reason:
+            raise RuntimeError(reason)
+        removed = {"chats": self._clear_chats(True)["removed"], "knowledge": self._clear_notes("knowledge", True)["removed"]}
+        for target in DataRecords.TARGETS:
+            removed[target] = self.records.clear(target)["removed"]
+        if empty_recycle:
+            removed["recycle"] = self._empty_recycle()["removed"]
+        if delete_backups:
+            backups = [b["id"] for b in self.backups.list()]
+            for backup_id in backups:
+                self.backups.delete(backup_id)
+            removed["backups"] = len(backups)
+        kept = [name for name, left in (("the recycle bin", not empty_recycle and self.recycle.list_recycled()),
+                                        ("backups", not delete_backups and self.backups.list())) if left]
+        kept_text = f" Kept: {' and '.join(kept)}, and your archives." if kept else " Your archives were kept."
+        message = "Deleted all of Steward's data. Steward starts fresh with the next scan." + kept_text
+        return {"status": "ok", "removed": removed, "message": message}
+
     def restore(self, backup_id):
         """Put a backup back and return {"status", "message", "restored"}.
 
