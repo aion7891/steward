@@ -65,6 +65,11 @@ class ChatApprovals:
                 raise KeyError(f"No approval is waiting for run {run_id}. It may have been decided already.")
             return self.pending.pop(str(run_id))
 
+    def clear(self):
+        """Forget every waiting approval (used when all chats are cleared)."""
+        with self.lock:
+            self.pending.clear()
+
     def open_requirements(self, run):
         """Return the steps in a run that still need a yes/no."""
         return [req for req in (getattr(run, "requirements", None) or []) if req.needs_confirmation]

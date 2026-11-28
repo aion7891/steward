@@ -41,7 +41,8 @@ export function ChatProvider({ children }) {
     getConversation(sessionId)
       .then((data) => {
         if (cancelled) return;
-        if (data.messages && data.messages.length) setMessages(serverMessagesToChat(data.messages));
+        // The server's copy wins, also when it is empty (for example after chats were cleared in Settings)
+        if (Array.isArray(data.messages)) setMessages(serverMessagesToChat(data.messages));
         if (data.active_job) setJob(jobState(data.active_job));
       })
       .catch(() => {});  // offline: keep the browser copy

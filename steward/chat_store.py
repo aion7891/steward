@@ -126,6 +126,44 @@ class ChatStore:
         )
         return [{**row, "data": json.loads(row["data"])} for row in reversed(rows)]
 
+    def counts(self):
+        """Return {"conversations", "messages"}: how many are saved."""
+        conversations = self.db._query_all("SELECT COUNT(*) AS n FROM chat_conversations")[0]["n"]
+        messages = self.db._query_all("SELECT COUNT(*) AS n FROM chat_messages")[0]["n"]
+        return {"conversations": conversations, "messages": messages}
+
+    def export_all(self):
+        """Return every conversation and message as plain rows (used for the backup before clearing)."""
+        return {
+            "conversations": self.db._query_all("SELECT * FROM chat_conversations ORDER BY created_at"),
+            "messages": self.db._query_all("SELECT * FROM chat_messages ORDER BY id"),
+        }
+
+    def clear_all(self):
+        """Delete every conversation and message."""
+        self.db._execute("DELETE FROM chat_messages")
+        self.db._execute("DELETE FROM chat_conversations")
+
+    def import_rows(self, payload):
+        """Put conversations from a backup back; ones that exist already are skipped. Returns how many came back.
+
+        Args:
+            payload: dict made by export_all().
+        """
+        existing = {row["id"] for row in self.db._query_all("SELECT id FROM chat_conversations")}
+        restored = [c for c in payload.get("conversations", []) if c["id"] not in existing]
+        for conv in restored:
+            self.db._execute("INSERT INTO chat_conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                             (conv["id"], conv["title"], conv["created_at"], conv["updated_at"]))
+        wanted = {c["id"] for c in restored}
+        for msg in payload.get("messages", []):  # new row ids, same order, so nothing collides
+            if msg["conversation_id"] in wanted:
+                self.db._execute(
+                    "INSERT INTO chat_messages (conversation_id, role, content, run_id, data, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (msg["conversation_id"], msg["role"], msg["content"], msg["run_id"], msg["data"], msg["created_at"]))
+        return len(restored)
+
     def delete(self, conversation_id):
         """Delete a conversation and its messages; return True when it existed.
 

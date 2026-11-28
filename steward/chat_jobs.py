@@ -112,6 +112,11 @@ class ChatJobs:
                 Team.cancel_run(job["run_id"])  # also tells Agno, which stops at its next check
         return self.get(job_id)
 
+    def busy(self):
+        """Return True while any chat answer is queued or running."""
+        with self.lock:
+            return any(job["status"] in ("queued", "running") for job in self.jobs.values())
+
     def active_for(self, session_id):
         """Return the queued or running job of a conversation (session_id), or None."""
         with self.lock:

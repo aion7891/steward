@@ -3,7 +3,9 @@ import { CalendarClock } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { getModels, getSettings, saveSettings } from "../api/steward.js";
+import { useChat } from "../chat/ChatProvider.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
+import DataSettings from "../components/settings/DataSettings.jsx";
 import FolderSettings from "../components/settings/FolderSettings.jsx";
 import ModelSettings from "../components/settings/ModelSettings.jsx";
 import SafetySettings from "../components/settings/SafetySettings.jsx";
@@ -29,6 +31,7 @@ function Schedule({ scheduler }) {
 export default function SettingsPage() {
   const { data, error, loading } = useApi(getSettings, []);
   const { data: models } = useApi(getModels, []);
+  const chat = useChat();
   const [settings, setSettings] = useState(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState(null);
@@ -65,6 +68,8 @@ export default function SettingsPage() {
           <FolderSettings settings={settings} saving={saving} onSave={save} />
         </div>
       </div>
+      {/* After chats are cleared or restored, the chat page starts a fresh conversation */}
+      <DataSettings onChatsChanged={chat.newChat} />
       <p className="faint">
         Saved in <code>{settings.override_file}</code>. Your config.yaml is never rewritten; values in .env still win.
       </p>
