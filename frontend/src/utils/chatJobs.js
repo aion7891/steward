@@ -19,7 +19,7 @@ export function jobState(job) {
 /** Turn a finished job's result into an assistant message (with its steps and duration). */
 export function jobResultToMessage(result) {
   const data = result || { status: "error", reply: "Steward could not answer." };
-  return { ...replyToMessage(data, data.duration_sec), steps: data.steps || [] };
+  return { ...replyToMessage(data, data.duration_sec), steps: data.steps || [], folder: data.folder || null };
 }
 
 /** Turn messages saved on the server into chat messages (stable ids, original times). */

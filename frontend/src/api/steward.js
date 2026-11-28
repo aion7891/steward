@@ -109,6 +109,11 @@ export function getConversation(sessionId) {
   return request(`/steward/chat/conversations/${encodeURIComponent(sessionId)}`);
 }
 
+/** Fresh stats and suggestions for a folder (after files were changed). */
+export function getFolderCard(path) {
+  return request(`/steward/chat/folder?path=${encodeURIComponent(path)}`);
+}
+
 export function deleteConversation(sessionId) {
   return request(`/steward/chat/conversations/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
 }

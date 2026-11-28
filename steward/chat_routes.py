@@ -22,6 +22,8 @@ class ChatRoutes:
             mapper: optional PathMapper for Mac paths.
             run_inline: answer jobs synchronously (used by tests).
         """
+        self.chat = chat
+        self.mapper = mapper
         self.store = ChatStore(app.db)
         self.jobs = ChatJobs(chat, self.store, mapper=mapper, run_inline=run_inline)
 
@@ -78,6 +80,15 @@ class ChatRoutes:
         def conversation(conversation_id):
             return {"status": "ok", "id": conversation_id, "messages": self.store.messages(conversation_id),
                     "active_job": self.jobs.active_for(conversation_id)}
+
+        @api.get("/steward/chat/folder")
+        def folder_card(path=""):
+            # Fresh numbers for the workspace panel after files were changed
+            try:
+                card = self.chat.insights.card_for_path(path)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"status": "ok", "folder": self.mapper.to_host_deep(card) if self.mapper else card}
 
         @api.delete("/steward/chat/conversations/{conversation_id}")
         def delete(conversation_id):

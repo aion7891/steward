@@ -1,12 +1,11 @@
 // The message box: grows with the text, Enter sends, Shift+Enter adds a new line.
-import { SendHorizontal } from "lucide-react";
+// The "hero" variant is the big centred box on the empty chat page.
+import { ArrowUp } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
-import Button from "../ui/Button.jsx";
 
 const MAX_LENGTH = 2000;
 
-export default function Composer({ onSend, disabled }) {
+export default function Composer({ onSend, disabled, variant = "dock", autoFocus = false }) {
   const [text, setText] = useState("");
   const boxRef = useRef(null);
 
@@ -36,21 +35,22 @@ export default function Composer({ onSend, disabled }) {
   }
 
   return (
-    <form className="chat-composer" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+    <form className={`composer composer--${variant}`} onSubmit={(e) => { e.preventDefault(); submit(); }}>
       <textarea
         ref={boxRef}
-        className="chat-composer__input"
+        className="composer__input"
         rows={1}
         maxLength={MAX_LENGTH}
-        placeholder={disabled ? "Waiting for the answer…" : "Ask about your files…  (Enter to send, Shift+Enter for a new line)"}
+        autoFocus={autoFocus}
+        placeholder={disabled ? "Waiting for the answer…" : "Ask Steward, or paste a folder path…"}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         aria-label="Message"
       />
-      <Button type="submit" variant="primary" icon={SendHorizontal} disabled={disabled || !text.trim()}>
-        Send
-      </Button>
+      <button type="submit" className="composer__send" disabled={disabled || !text.trim()} aria-label="Send">
+        <ArrowUp size={18} aria-hidden="true" />
+      </button>
     </form>
   );
 }

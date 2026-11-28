@@ -90,6 +90,22 @@ class TestChatSteps:
         assert final[0]["title"] == "Archiving b.txt" and final[0]["status"] == "error"
         assert final[1]["title"] == "Using count stars" and final[1]["agent"] == "Scanner"
 
+    def test_helper_errors_become_failed_steps(self):
+        """A helper's RunError is shown as a failed step with the error text."""
+        steps = ChatSteps()
+        steps.handle(SimpleNamespace(event="RunError", agent_name="RecommenderAgent", content="model crashed", tool=None))
+        step = steps.finish()[0]
+        assert step["title"] == "Recommender could not finish" and step["status"] == "error"
+        assert step["detail"] == "model crashed"
+
+    def test_team_and_helpers_have_tool_limits(self, tmp_path):
+        """The team stops handing over after a few tries; each helper has a tool-call limit too."""
+        _, server, _ = build(tmp_path)
+        agents = server.agents
+        team = agents._build_orchestrator_team()  # build() swapped in a fake team; build a real one
+        assert team.tool_call_limit == agents.TEAM_HANDOFF_LIMIT == 6
+        assert all(member.tool_call_limit == agents.MEMBER_TOOL_LIMIT for member in team.members)
+
 
 class TestChatJobsApi:
     """POST a question, poll the job, and find the conversation saved on the server."""

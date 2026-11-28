@@ -1,5 +1,6 @@
-// The conversation: user questions on the right, Steward's answers (as Markdown) on the left.
-import { BookOpen, Bot, Check, Copy, FileText, RotateCcw, User } from "lucide-react";
+// The conversation: your questions as soft pills on the right, Steward's answers as plain text
+// with the steps it took, scan results, and the files it really looked at.
+import { BookOpen, Check, Copy, FileText, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
@@ -7,6 +8,8 @@ import { toSourceChip } from "../../utils/chatStorage.js";
 import { formatDuration } from "../../utils/format.js";
 import Button from "../ui/Button.jsx";
 import ApprovalCard from "./ApprovalCard.jsx";
+import FolderCard from "./FolderCard.jsx";
+import StepTrail from "./StepTrail.jsx";
 
 // Answers may quote document text. Links and images are shown as plain text so a
 // document can never smuggle a clickable link or a remote image into the page.
@@ -27,20 +30,17 @@ function CopyButton({ text }) {
     }
   }
   return (
-    <button type="button" className="chat-icon-btn" onClick={copy} title="Copy answer">
+    <button type="button" className="chat-icon-btn" onClick={copy} title="Copy answer" aria-label="Copy answer">
       {copied ? <Check size={14} /> : <Copy size={14} />}
     </button>
   );
 }
 
-// Files and knowledge notes the AI really looked at while answering (or an honest "none")
-function Sources({ message, tone }) {
+// Files and knowledge notes the AI really looked at while answering (only shown when there are some)
+function Sources({ message }) {
   const chips = (message.sources || []).map(toSourceChip);
-  if (tone !== "ok") {
-    return null;
-  }
   if (chips.length === 0) {
-    return <div className="chat-sources faint">Answered without looking up your files.</div>;
+    return null;
   }
   return (
     <div className="chat-sources">
@@ -60,33 +60,34 @@ function Sources({ message, tone }) {
 
 const TONES = { error: "error", paused: "paused", approval: "approval" };
 
-function AssistantMessage({ message, onRetry, onDecide, busy }) {
+function AssistantMessage({ message, onRetry, onDecide, onAsk, busy }) {
   const tone = TONES[message.status] || "ok";
   return (
-    <div className={`chat-msg chat-msg--assistant chat-msg--${tone}`}>
-      <span className="chat-avatar chat-avatar--bot"><Bot size={16} aria-hidden="true" /></span>
-      <div className="chat-bubble">
-        {tone === "approval" ? (
-          <ApprovalCard message={message} busy={busy} onDecide={onDecide} />
-        ) : (
-          <div className="chat-markdown">
-            <ReactMarkdown skipHtml components={SAFE_MARKDOWN}>{message.content}</ReactMarkdown>
-          </div>
-        )}
-        <Sources message={message} tone={tone} />
-        <div className="chat-meta">
-          {message.durationSec ? <span>Answered in {formatDuration(message.durationSec)}</span> : null}
-          {tone === "ok" && <CopyButton text={message.content} />}
-          {tone === "error" && onRetry && (
-            <Button size="sm" variant="secondary" icon={RotateCcw} onClick={onRetry}>Retry</Button>
-          )}
+    <article className={`answer answer--${tone}`}>
+      <StepTrail steps={message.steps} durationSec={message.durationSec} />
+      {tone === "approval" ? (
+        <ApprovalCard message={message} busy={busy} onDecide={onDecide} />
+      ) : (
+        <div className="chat-markdown answer__text">
+          <ReactMarkdown skipHtml components={SAFE_MARKDOWN}>{message.content}</ReactMarkdown>
         </div>
+      )}
+      {message.folder && <FolderCard folder={message.folder} onAsk={onAsk} busy={busy} />}
+      {tone === "ok" && <Sources message={message} />}
+      <div className="answer__meta">
+        {!(message.steps && message.steps.length) && message.durationSec ? (
+          <span>Answered in {formatDuration(message.durationSec)}</span>
+        ) : null}
+        {tone === "ok" && <CopyButton text={message.content} />}
+        {tone === "error" && onRetry && (
+          <Button size="sm" variant="secondary" icon={RotateCcw} onClick={onRetry}>Retry</Button>
+        )}
       </div>
-    </div>
+    </article>
   );
 }
 
-export default function MessageList({ messages, onRetry, onDecide, busy, pendingSlot }) {
+export default function MessageList({ messages, onRetry, onDecide, onAsk, busy, pendingSlot }) {
   const endRef = useRef(null);
   // Keep the newest message in view
   useEffect(() => {
@@ -96,14 +97,11 @@ export default function MessageList({ messages, onRetry, onDecide, busy, pending
   }, [messages.length, pendingSlot]);
 
   return (
-    <div className="chat-messages" aria-live="polite">
+    <div className="thread" aria-live="polite">
       {messages.map((message, index) => message.role === "user" ? (
-        <div key={message.id} className="chat-msg chat-msg--user">
-          <div className="chat-bubble">{message.content}</div>
-          <span className="chat-avatar"><User size={16} aria-hidden="true" /></span>
-        </div>
+        <div key={message.id} className="question"><div className="question__pill">{message.content}</div></div>
       ) : (
-        <AssistantMessage key={message.id} message={message} onDecide={onDecide} busy={busy}
+        <AssistantMessage key={message.id} message={message} onDecide={onDecide} onAsk={onAsk} busy={busy}
           onRetry={index === messages.length - 1 ? onRetry : null} />
       ))}
       {pendingSlot}

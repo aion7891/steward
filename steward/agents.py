@@ -4,20 +4,15 @@ from agno.agent import Agent
 from agno.db.sqlite import SqliteDb
 from agno.team import Team
 
-from steward.tools import (
-    DocumentReaderTools,
-    FileScannerTools,
-    OKFTools,
-    OrganizerTools,
-    ReportTools,
-    SoftwareTools,
-)
+from steward.tools import DocumentReaderTools, FileScannerTools, OKFTools, OrganizerTools, ReportTools, SoftwareTools
 from steward.tools.tool_paths import ToolPaths
 
 
 class StewardAgents:
     """Builds the 6 specialist Agno Agents and the routing Orchestrator Team."""
 
+    TEAM_HANDOFF_LIMIT = 6  # hand-overs per answer; then the team must answer with what it has
+    MEMBER_TOOL_LIMIT = 8  # tool calls per helper per task
     # Shared by every agent that passes paths to tools
     PATH_RULES = (
         "Pass file and folder paths to tools exactly as the user wrote them; Mac paths "
@@ -65,6 +60,7 @@ class StewardAgents:
             "update_memory_on_run": False,
             "add_history_to_context": True,
             "markdown": True,
+            "tool_call_limit": self.MEMBER_TOOL_LIMIT,
         }
 
     def _build_scanner_agent(self):
@@ -186,6 +182,8 @@ class StewardAgents:
             ),
             add_history_to_context=True,
             markdown=True,
+            # Small local models sometimes hand the same task over again and again; stop after a few
+            tool_call_limit=self.TEAM_HANDOFF_LIMIT,
         )
 
     def list_agents(self):

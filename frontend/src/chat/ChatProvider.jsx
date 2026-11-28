@@ -3,7 +3,7 @@
 // the browser copy is only a fallback while the server can't be reached.
 import { createContext, useContext, useEffect, useState } from "react";
 
-import { decideChatJob, getChatJob, getConversation, startChatJob } from "../api/steward.js";
+import { decideChatJob, getChatJob, getConversation, listConversations, startChatJob } from "../api/steward.js";
 import { interruptedMessage, jobResultToMessage, jobState, POLL_MS, serverMessagesToChat } from "../utils/chatJobs.js";
 import { loadMessages, loadSessionId, newSessionId, saveMessages, saveSessionId } from "../utils/chatStorage.js";
 
@@ -22,8 +22,16 @@ export function ChatProvider({ children }) {
   const [sessionId, setSessionId] = useState(() => loadSessionId());
   const [messages, setMessages] = useState(() => loadMessages());
   const [job, setJob] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const busy = job !== null;
 
   useEffect(() => saveMessages(messages), [messages]);
+
+  // Recent chats for the sidebar: refreshed when an answer finishes or another chat opens
+  useEffect(() => {
+    if (busy) return;
+    listConversations(12).then((data) => setConversations(data.conversations || [])).catch(() => {});
+  }, [busy, sessionId]);
 
   // Load the server's copy of the conversation and pick up an answer that is still running
   useEffect(() => {
@@ -103,6 +111,6 @@ export function ChatProvider({ children }) {
     setSessionId(saveSessionId(id));
   }
 
-  const value = { sessionId, messages, job, busy: job !== null, ask, decide, retry, newChat, openChat };
+  const value = { sessionId, messages, job, busy, conversations, ask, decide, retry, newChat, openChat };
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }

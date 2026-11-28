@@ -5,8 +5,10 @@ from agno.run.agent import RunOutput
 from agno.run.team import TeamRunOutput
 
 from steward.chat_approvals import ChatApprovals
+from steward.chat_insights import ChatInsights
 from steward.chat_notices import ChatNotices
 from steward.chat_sources import ChatSources
+from steward.tools.tool_paths import ToolPaths
 
 
 class ChatService:
@@ -35,6 +37,7 @@ class ChatService:
         self.mapper = mapper
         self.sources = ChatSources()
         self.notices = ChatNotices()
+        self.insights = ChatInsights(steward_app, ToolPaths(mapper) if mapper is not None else ToolPaths())
         # Steps that cannot work (missing path, read-only folder) are declined before asking
         self.approvals = ChatApprovals(
             steward_app.config,
@@ -134,7 +137,17 @@ class ChatService:
             if notes:
                 text = f"{text}\n\n{ChatNotices.as_markdown(notes)}".strip()
             result.update(status="ok", reply=text, sources=sources)
+            self._add_folder_card(result, reply)
         return self._show(result)
+
+    def _add_folder_card(self, result, reply):
+        """Attach real stats for a folder the answer scanned (never breaks the answer)."""
+        try:
+            card = self.insights.folder_card(reply)
+        except Exception:  # the card is a bonus; the answer itself must always arrive
+            card = None
+        if card:
+            result["folder"] = card
 
     def _paused(self, reply, result, notes, auto_continues, listener=None):
         """Show the approval card, after declining the steps that cannot work."""

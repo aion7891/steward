@@ -18,6 +18,8 @@ describe("jobResultToMessage", () => {
     const message = jobResultToMessage({ status: "ok", reply: "Found 4 files", sources: [], steps: STEPS, duration_sec: 9.5 });
     expect(message).toMatchObject({ role: "assistant", status: "ok", content: "Found 4 files", durationSec: 9.5 });
     expect(message.steps).toHaveLength(1);
+    expect(message.folder).toBeNull();
+    expect(jobResultToMessage({ status: "ok", reply: "x", folder: { name: "docs" } }).folder.name).toBe("docs");
   });
 
   it("keeps approval cards", () => {

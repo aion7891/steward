@@ -54,6 +54,8 @@ class ChatSteps:
                 self._start_tool(getattr(event, "tool", None), who)
             elif name.endswith("ToolCallCompleted") or name.endswith("ToolCallError"):
                 self._finish_tool(getattr(event, "tool", None), failed=name.endswith("Error"))
+            elif name.endswith("RunError"):
+                self._add_error(who, getattr(event, "content", None))
 
     def progress(self, label, done, total):
         """Show progress of a long action on the step that is running ("archiving 3/14").
@@ -103,6 +105,13 @@ class ChatSteps:
         else:
             step.update(kind="tool", title=self._title(tool.tool_name, args))
         self.steps.append(step)
+
+    def _add_error(self, who, message):
+        """Record that a helper (or the team) failed, so the user sees it instead of silence."""
+        now = time.time()
+        self.steps.append({"id": len(self.steps) + 1, "call_id": None, "kind": "tool", "agent": who,
+                           "title": f"{who} could not finish", "detail": self._short(message), "status": "error",
+                           "progress": None, "started": now, "ended": now})
 
     def _finish_tool(self, tool, failed):
         """Mark the matching running step done (or failed) and add the tool's own message."""

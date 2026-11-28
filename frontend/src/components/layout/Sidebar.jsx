@@ -1,8 +1,9 @@
-// Left navigation: brand, the pages, and a small footer.
+// Left navigation: brand, the pages, recent chats, and a small footer.
 import { FileBarChart, FolderSearch, LayoutDashboard, MessageSquare, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import { useChat } from "../../chat/ChatProvider.jsx";
+import RecentChats from "./RecentChats.jsx";
 
 const LINKS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -37,6 +38,7 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+      <RecentChats />
       <div className="sidebar__footer">Runs on this computer. Your files stay here.</div>
     </aside>
   );
