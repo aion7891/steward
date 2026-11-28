@@ -126,3 +126,8 @@
 .input:focus { outline: none; border-color: var(--color-brand); box-shadow: 0 0 0 3px var(--color-brand-soft); }
 .label { display: block; margin-bottom: var(--space-1); font-size: var(--text-sm); font-weight: 600; }
 .checkbox { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--text-sm); cursor: pointer; }
+
+/* Small pulsing dot on the Chat link while an answer is running */
+.sidebar__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-brand); margin-left: auto; animation: sidebar-pulse 1.2s ease-in-out infinite; }
+@keyframes sidebar-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .sidebar__dot { animation: none; } }

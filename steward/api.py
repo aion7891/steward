@@ -7,6 +7,7 @@ from agno.os import AgentOS
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from steward.chat_routes import ChatRoutes
 from steward.chat_service import ChatService
 from steward.main import StewardApp
 from steward.path_mapper import PathMapper
@@ -33,6 +34,9 @@ class StewardAPIServer:
         self._register_steward_routes(base_app)
         self.web_routes = WebRoutes(self.steward_app, mapper=self.path_mapper, on_model_change=self._rebuild_agents)
         self.web_routes.register(base_app)
+        # Background chat jobs: answers survive tab switches and reloads, with live steps
+        self.chat_routes = ChatRoutes(self.steward_app, self.chat, mapper=self.path_mapper)
+        self.chat_routes.register(base_app)
         # Only the Vite dev server needs CORS; in Docker nginx serves UI and API from one origin
         origins = os.getenv("STEWARD_CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173")
         base_app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in origins.split(",") if o.strip()],

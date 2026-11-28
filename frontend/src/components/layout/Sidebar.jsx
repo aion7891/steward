@@ -2,6 +2,8 @@
 import { FileBarChart, FolderSearch, LayoutDashboard, MessageSquare, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
+import { useChat } from "../../chat/ChatProvider.jsx";
+
 const LINKS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/scan", label: "Scan a folder", icon: FolderSearch },
@@ -11,6 +13,8 @@ const LINKS = [
 ];
 
 export default function Sidebar() {
+  const chat = useChat();
+  const chatBusy = Boolean(chat && chat.busy);
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -29,6 +33,7 @@ export default function Sidebar() {
           >
             <Icon size={18} aria-hidden="true" />
             <span className="sidebar__label">{label}</span>
+            {to === "/chat" && chatBusy && <span className="sidebar__dot" title="Steward is answering" aria-label="answering" />}
           </NavLink>
         ))}
       </nav>
