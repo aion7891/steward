@@ -20,7 +20,7 @@ class AppConfig:
 
     DEFAULT_DATA = {
         "app": {
-            "name": "Steward", "version": "0.12.0", "environment": "development",
+            "name": "Steward", "version": "0.13.0", "environment": "development",
             "log_level": "INFO", "log_file": "steward.log",
             "log_max_bytes": 5242880, "log_backup_count": 3,
         },

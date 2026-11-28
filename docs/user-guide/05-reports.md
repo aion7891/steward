@@ -13,6 +13,9 @@ recently, the habits Steward noticed, and its clean-up suggestions.
   exist (a red badge means the file was deleted).
 - Click a report to read it on the right.
 - **Download** it as **HTML** (opens in any browser, nice to share) or **Markdown** (plain text).
+- **Delete** a report with the 🗑 next to it. Steward asks first, then deletes its HTML and Markdown
+  files; the next report opens. To delete all reports at once, use
+  [Settings → Data & cleanup](06-settings.md#data--cleanup).
 
 ## What's inside a report
 

@@ -19,9 +19,12 @@ frontend/
     ├── styles/tokens.css                        # design tokens (light + dark)
     ├── styles/base.css · components.css         # layout + shared components
     ├── styles/{dashboard,scan,chat,chat-panel,reports,settings}.css   # page-specific
-    ├── components/layout/                       # AppShell (health polling, warnings), Sidebar, RecentChats (working dots, delete), TopBar, PageHeader
+    ├── components/layout/                       # AppShell (health polling, sidebar collapsed flag), Sidebar (collapses to icons), RecentChats (working dots, delete; compact), TopBar (badge → /dashboard#todo), PageHeader
     ├── components/chat/                         # ChatHome, Composer (Send ⇄ Stop), MessageList, StepTrail, FolderCard, ChatPanel, ApprovalCard
     ├── components/settings/DataSettings.jsx     # Data & cleanup: clear / delete for good (type DELETE) / backups (helpers in dataCleanup.js)
+    ├── components/settings/EverythingPanel.jsx  # Delete everything (+ ConfirmBox.jsx, shared confirm with typed DELETE)
+    ├── utils/layoutPrefs.js · todoView.js       # remembered sidebar/To-do choices (safe localStorage) · first 10 + summary
+    ├── utils/dataEvents.js                      # steward:data-changed → AppShell reloads health (badge) at once
     ├── components/ui/                           # Card, Button, Badge, StatCard, Alert, EmptyState, Spinner
     ├── components/{dashboard,scan,chat,reports,settings}/  # page parts
     └── pages/{Dashboard,Scan,Chat,Reports,Settings}Page.jsx

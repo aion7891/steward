@@ -54,25 +54,42 @@ the `scheduler:` section in `config.yaml`.
 
 ## Data & cleanup
 
-At the bottom of Settings you can clear **Steward's own data**. Files in your folders are never
-touched here.
+At the bottom of Settings you can delete **Steward's own data**. Files in your folders are never
+touched here, and neither are your archives (the zips of files you archived).
 
 ![Data & cleanup](images/settings-data.png)
 
 | Item | What it is | Buttons |
 |:--|:--|:--|
 | **Chats** | Your conversations, and the AI's memory of them | Clear · Delete for good |
-| **Knowledge notes** | Everything Steward learned about your files, folders, projects and topics | Clear · Delete for good |
+| **Knowledge notes** | Everything Steward learned about your files, projects and topics, including the *Work habits* on the Dashboard | Clear · Delete for good |
 | **Topics only** | Just the topic notes; the other knowledge notes stay | Clear · Delete for good |
+| **Scan history & file index** | The Dashboard numbers, chart, file types, suggestions and recent scans. The next scan builds it again | Delete for good |
+| **To-do & action history** | Suggestions waiting for you and the list of past changes. Undo stops working for past changes; files already in the recycle bin or archives stay there | Delete for good |
+| **Document search index** | Lets the chat answer questions about what your documents say. Build it again by scanning a folder with *Also make documents searchable in Chat* | Delete for good |
+| **Reports** | All generated reports and their files (one report: 🗑 on the [Reports](05-reports.md) page) | Delete for good |
 | **Recycle bin** | Files Steward moved to its recycle bin | Empty for good |
 
 - **Clear** asks once, then keeps a **backup**. It appears under **Backups**, where **Restore** puts
   everything back (chats that exist already are left alone).
 - **Delete for good** and **Empty for good** keep no backup and can't be undone. The button only
   works after you type **`DELETE`** in the box.
-- Emptying the recycle bin means **Undo** no longer works for those files.
-- While a chat is still answering, Steward waits: finish or **Stop** it, then clear the chats.
+- While a chat is still answering (or a folder scan is running), Steward waits: let it finish or
+  press **Stop**, then try again.
 - To delete just one chat, use the 🗑 icon in **Recent chats** ([Chat](04-chat.md#several-chats-and-deleting-them)).
+
+### Delete everything
+
+The red **Delete everything** panel at the top does a complete reset in one go: chats, knowledge
+notes, the scan history and file index, the to-do and action history, the search index and reports.
+Tick **Also empty the recycle bin** or **Also delete the backups** if you want those gone too (both
+are off by default). Type `DELETE` and press **Delete everything**.
+
+![Delete everything, ready to confirm](images/settings-delete-everything.png)
+
+Afterwards the Dashboard, Reports and Chat are empty and the "to review" badge disappears at once.
+**Steward then starts fresh:** the next scan (every hour, or from *Scan a folder*) fills the
+Dashboard again with what is in your folders now. Your archives are never deleted.
 
 ## "Locked by .env"
 

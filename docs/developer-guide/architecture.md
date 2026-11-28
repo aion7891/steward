@@ -91,6 +91,20 @@ from the event listener on Stop or after 5 minutes, and records `actions` from
 `OrganizerTools.done_actions`; `OrganizerTools.progress`/`done_actions` are per thread (two jobs at
 once); the team passes history to helpers (`add_team_history_to_members`).
 
+## Modules added for delete everything (0.13.0)
+
+| Module | Class | Responsibility |
+|:--|:--|:--|
+| `steward/data_records.py` | `DataRecords` | The records behind the Dashboard, always deleted for good: file index + scan history (`files`, `scan_runs`, `activity_events`, `software`, `folder_scan_jobs`), actions, the RAG index, reports |
+
+Changed: `DataCleanup` gains the four record targets and `delete_everything` (checks a running chat
+answer and folder scan first, then clears everything; recycle bin and backups only when asked;
+never archives); `RAGIndex.clear()` drops the Chroma collection and resets the manifest, and
+`index_from_database` re-reads the manifest so the worker process rebuilds a cleared index;
+`FolderScanJobs.busy()` / `forget_all()`; `ReportService.delete(key)` / `delete_all()` / `count()`
+(files only inside `reports_dir`). Frontend: collapsible sidebar, Dashboard order with a foldable
+To-do, a `steward:data-changed` event that refreshes the health badge at once.
+
 ### Live chat job
 
 ```mermaid

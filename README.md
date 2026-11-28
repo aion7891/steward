@@ -11,7 +11,7 @@ Steward is a local-first, multi-agent AI assistant that runs continuously on you
 - **Rejections are honoured** — a "no" (button or typed) means the change never happens; Steward words that answer itself
 - **Read-only by default in Docker** — Desktop and Documents can only be changed after you set `STEWARD_DESKTOP_ACCESS=rw` / `STEWARD_DOCUMENTS_ACCESS=rw`
 
-## The chat (0.12.0)
+## The chat and your data (0.12 / 0.13)
 
 Type *"can you search for a file named invoice"*, *"which file is the largest?"*, then *"delete
 it"* or *"archive it"*: Steward remembers what "it" is, shows each step live, and asks for approval
@@ -20,6 +20,12 @@ recover it"* puts the last change back, **■ Stop** ends a long answer, and two
 once. Settings → *Data & cleanup* clears chats, knowledge notes and the recycle bin (with backups, or
 for good after typing `DELETE`). See the [User Guide](docs/user-guide/04-chat.md) and
 [what's new in 0.12](review-system/13-whats-new-0.12.md).
+
+**0.13.0:** Settings → *Data & cleanup* can delete everything Steward keeps (chats, notes, scan
+history, to-do, search index, reports), one by one or with **Delete everything**, a complete reset
+after which Steward starts fresh. Archives are never deleted. The sidebar folds into icons, and the
+Dashboard shows the scan chart first and the to-do list last. See
+[what's new in 0.13](review-system/14-whats-new-0.13.md).
 
 ---
 
