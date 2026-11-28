@@ -48,17 +48,28 @@ For safety, Steward (inside Docker) can only see folders you **share** with it:
 
 | Folder on your Mac | Shared as | Can Steward change files there? |
 |:--|:--|:--|
-| Documents | yes | No, read-only (it can only suggest) |
-| Desktop | yes | No, read-only |
+| Documents | yes | Read-only, unless you turn it on (below) |
+| Desktop | yes | Read-only, unless you turn it on |
 | Downloads | yes | Yes, after your approval |
-| One extra folder of your choice | optional | No, read-only |
+| One extra folder of your choice | optional | Read-only, unless you turn it on |
 
-To share **one more folder**, add this line to the `.env` file in the Steward folder and run
+**Read-only** means Steward can scan the folder and suggest clean-ups, but it cannot move,
+archive or recycle anything there. Settings shows a **read-only** or **writable** badge next to
+each watched folder.
+
+To share **one more folder**, or to **let Steward change files** in Documents, Desktop or that
+extra folder, add lines like these to the `.env` file in the Steward folder and run
 `docker compose up -d` again:
 
 ```bash
-STEWARD_EXTRA_DIR=/Users/you/Projects
+STEWARD_EXTRA_DIR=/Users/you/Projects   # share one more folder
+STEWARD_DESKTOP_ACCESS=rw               # allow changes on the Desktop
+STEWARD_DOCUMENTS_ACCESS=rw             # allow changes in Documents
+STEWARD_EXTRA_ACCESS=rw                 # allow changes in the extra folder
 ```
+
+Only the exact value `rw` turns changes on; anything else keeps the folder read-only. Even
+with `rw`, every change still needs your **Approve** and can be undone.
 
 ## Stop, restart, update
 

@@ -59,6 +59,16 @@ export function newSessionId(storage = defaultStorage()) {
   return id;
 }
 
+/** Remember which conversation is open (used when opening a saved chat). */
+export function saveSessionId(id, storage = defaultStorage()) {
+  try {
+    if (storage) storage.setItem(SESSION_KEY, id);
+  } catch {
+    // Blocked storage: the id still works for this page view
+  }
+  return id;
+}
+
 /** The current conversation id, created on first use. */
 export function loadSessionId(storage = defaultStorage()) {
   try {

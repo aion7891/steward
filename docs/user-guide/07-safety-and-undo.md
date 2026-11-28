@@ -23,7 +23,7 @@ flowchart TB
 | **Protected folders** | Never touched, even if approved |
 | **Recycle bin** | "Delete" never really deletes; files go to Steward's recycle bin with a note of where they came from |
 | **Undo** | Every completed action has an **Undo** button (Dashboard, *Recently completed*) |
-| **Read-only sharing** | In Docker, Documents and Desktop are shared read-only, so changes there are impossible |
+| **Read-only sharing** | In Docker, Documents and Desktop are shared read-only by default, so changes there are impossible until you set `STEWARD_DOCUMENTS_ACCESS=rw` / `STEWARD_DESKTOP_ACCESS=rw` yourself |
 | **Private files skipped** | Files like `.env`, keys, and anything named *password* or *secret* are never read |
 | **On your computer** | With Ollama, nothing leaves your machine. A warning appears if a cloud model is active |
 

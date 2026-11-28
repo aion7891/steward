@@ -12,7 +12,8 @@
 | **Approve** did nothing to the file | Dry-run is ON (green badge, top right) | That's practice mode. Turn it off in [Settings](06-settings.md) when you're ready |
 | **Run now** is greyed out | Same: dry-run is ON | Turn dry-run off in Settings |
 | A setting says **Locked by … in .env** | The `.env` file fixes that value | Edit or remove that line in `.env`, then `docker compose up -d` |
-| A move or delete **failed** in Documents/Desktop | Those folders are shared read-only on purpose | Steward can only suggest there; move the file yourself |
+| **"Steward can only read … shared read-only"** | Documents/Desktop are shared read-only by default | Add `STEWARD_DESKTOP_ACCESS=rw` (or `STEWARD_DOCUMENTS_ACCESS=rw`) to `.env` and run `docker compose up -d`, or move the file yourself |
+| **"… must be 'rw' or 'ro' (found 'yes')"** | The access switch in `.env` has another value | Use exactly `rw` (allow changes) or `ro` (read-only) |
 | Dashboard still mentions a file you deleted | Steward's list catches up on the next scans | Run a scan; full clean-up of old entries is on the to-do list for a future version |
 | The page looks out of date | It refreshes every minute | Click **Refresh** on the Dashboard |
 

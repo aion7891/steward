@@ -3,6 +3,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import { ChatProvider } from "./chat/ChatProvider.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import { Loading } from "./components/ui/Spinner.jsx";
 
@@ -17,7 +18,9 @@ function Page({ children }) {
 }
 
 export default function App() {
+  // The chat lives above the pages, so an answer keeps running while you look at other tabs
   return (
+    <ChatProvider>
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
@@ -29,5 +32,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
+    </ChatProvider>
   );
 }

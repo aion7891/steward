@@ -6,6 +6,7 @@ import { baseName, shortPath } from "../../utils/format.js";
 import Badge from "../ui/Badge.jsx";
 import Button from "../ui/Button.jsx";
 import Card from "../ui/Card.jsx";
+import { accessBadge, readOnlySwitches } from "./access.js";
 
 export default function FolderSettings({ settings, saving, onSave }) {
   const saved = settings.folders || [];
@@ -17,6 +18,7 @@ export default function FolderSettings({ settings, saving, onSave }) {
   const savedPaths = saved.map((f) => f.display_path);
   const changed = draft.join("\n") !== savedPaths.join("\n");
   const statusOf = (path) => saved.find((f) => f.display_path === path);
+  const switches = readOnlySwitches(saved);
 
   function add(event) {
     event.preventDefault();
@@ -33,6 +35,7 @@ export default function FolderSettings({ settings, saving, onSave }) {
         <ul className="folder-list">
           {draft.map((path) => {
             const status = statusOf(path);
+            const access = accessBadge(status);
             return (
               <li key={path} className="folder-row">
                 <span className="folder-row__path" title={path}>
@@ -43,6 +46,7 @@ export default function FolderSettings({ settings, saving, onSave }) {
                 ) : (
                   <Badge tone="info">new</Badge>
                 )}
+                {access && <Badge tone={access.tone} title={access.title}>{access.label}</Badge>}
                 <button type="button" className="chat-icon-btn" title="Remove" disabled={draft.length === 1}
                   onClick={() => setDraft(draft.filter((p) => p !== path))}>
                   <Trash2 size={14} />
@@ -51,6 +55,14 @@ export default function FolderSettings({ settings, saving, onSave }) {
             );
           })}
         </ul>
+        {switches.length > 0 && (
+          <p className="faint folder-access-hint">
+            <strong>Read-only</strong> folders can be scanned, but Steward can&apos;t move, archive or recycle files there.
+            To allow changes (always after your approval), add {switches.map((name, i) => (
+              <span key={name}>{i > 0 && " / "}<code>{name}=rw</code></span>
+            ))} to <code>.env</code> and run <code>docker compose up -d</code>.
+          </p>
+        )}
         <form className="row" onSubmit={add}>
           <input className="input mono" value={newPath} onChange={(e) => setNewPath(e.target.value)}
             placeholder="/Users/you/Documents/Projects" aria-label="Folder to add" />

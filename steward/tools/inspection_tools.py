@@ -4,15 +4,22 @@ from datetime import datetime, timedelta, timezone
 
 from agno.tools import Toolkit
 
+from steward.tools.tool_paths import ToolPaths
+
 
 class FileScannerTools(Toolkit):
     """Agno Toolkit exposing incremental folder scans and SQLite cleanup queries."""
 
-    def __init__(self, scanner, db, config):
-        """Register file scanning and inspection functions."""
+    def __init__(self, scanner, db, config, paths=None):
+        """Register file scanning and inspection functions.
+
+        Args:
+            paths: ToolPaths that turns the user's Mac paths into paths Steward can open.
+        """
         self.scanner = scanner
         self.db = db
         self.config = config
+        self.paths = paths or ToolPaths()
         super().__init__(
             name="file_scanner_tools",
             tools=[
@@ -25,18 +32,30 @@ class FileScannerTools(Toolkit):
         )
 
     def scan_folder(self, folder_path=""):
-        """Scan one folder (or all configured watched folders when empty)."""
-        folders = [folder_path] if folder_path else None
+        """Scan one folder (or all configured watched folders when empty).
+
+        Args:
+            folder_path: the folder exactly as the user wrote it, e.g. ~/Desktop/docs.
+        """
+        try:
+            folders = [self.paths.folder(folder_path)] if folder_path else None
+        except ValueError as exc:
+            return {"status": "error", "message": str(exc)}
         summary = self.scanner.scan_all(folders=folders)
+        where = f" in {folder_path}" if folder_path else ""
         return {
             "status": "ok",
-            "message": f"Scanned {summary['files_seen']} file(s) ({summary['hashed_files']} hashed).",
+            "message": f"Scanned {summary['files_seen']} file(s){where} ({summary['hashed_files']} hashed).",
             "summary": summary,
         }
 
     def get_file_info(self, file_path):
         """Return stored SQLite metadata for a single file path."""
-        record = self.db.get_file(file_path)
+        try:
+            local = self.paths.target(file_path)
+        except ValueError as exc:
+            return {"status": "error", "message": str(exc)}
+        record = self.db.get_file(local)
         if record is None:
             return {"status": "not_found", "message": f"No record for {file_path}."}
         return {"status": "ok", "message": f"Found metadata for {record['name']}.", "file": record}
@@ -75,9 +94,14 @@ class FileScannerTools(Toolkit):
 class DocumentReaderTools(Toolkit):
     """Agno Toolkit for extracting text and metadata from local documents safely."""
 
-    def __init__(self, reader):
-        """Register document reading functions backed by DocumentReader."""
+    def __init__(self, reader, paths=None):
+        """Register document reading functions backed by DocumentReader.
+
+        Args:
+            paths: ToolPaths that turns the user's Mac paths into paths Steward can open.
+        """
         self.reader = reader
+        self.paths = paths or ToolPaths()
         super().__init__(
             name="document_reader_tools",
             tools=[self.read_document, self.extract_text],
@@ -85,7 +109,10 @@ class DocumentReaderTools(Toolkit):
 
     def read_document(self, file_path):
         """Read metadata and a bounded text preview from a local document."""
-        doc = self.reader.read(file_path)
+        try:
+            doc = self.reader.read(self.paths.existing(file_path))
+        except ValueError as exc:
+            return {"status": "error", "message": str(exc)}
         if doc.skipped:
             return {"status": "skipped", "message": doc.error, "path": doc.path}
         if doc.error:
@@ -101,7 +128,10 @@ class DocumentReaderTools(Toolkit):
 
     def extract_text(self, file_path, max_chars=4000):
         """Extract plain text from a supported document up to max_chars."""
-        doc = self.reader.read(file_path)
+        try:
+            doc = self.reader.read(self.paths.existing(file_path))
+        except ValueError as exc:
+            return {"status": "error", "message": str(exc)}
         if doc.skipped or doc.error:
             return {"status": "error", "message": doc.error, "path": doc.path}
         return {

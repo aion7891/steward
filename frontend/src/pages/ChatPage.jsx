@@ -1,102 +1,98 @@
-// Chat: ask questions about your files; answers cite the files or knowledge notes they used.
-import { Bot, Trash2 } from "lucide-react";
+// Chat: a clean conversation in the middle and live workspace cards on the right.
+// Answers run on the server, so they keep going while you look at other pages.
+import { PanelRightOpen, SquarePen } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { decideChat, sendChat } from "../api/steward.js";
+import { useChat } from "../chat/ChatProvider.jsx";
+import ChatHome from "../components/chat/ChatHome.jsx";
+import ChatPanel from "../components/chat/ChatPanel.jsx";
 import Composer from "../components/chat/Composer.jsx";
 import MessageList from "../components/chat/MessageList.jsx";
-import SuggestedPrompts from "../components/chat/SuggestedPrompts.jsx";
-import PageHeader from "../components/layout/PageHeader.jsx";
-import Button from "../components/ui/Button.jsx";
+import { StepList } from "../components/chat/StepTrail.jsx";
 import Spinner from "../components/ui/Spinner.jsx";
-import { loadMessages, loadSessionId, newSessionId, replyToMessage, saveMessages } from "../utils/chatStorage.js";
 import { formatDuration } from "../utils/format.js";
 import "../styles/chat.css";
+import "../styles/chat-panel.css";
 
-function Thinking({ startedAt }) {
+const PANEL_KEY = "steward.chat.panel.v1";
+
+// Open by default on wide screens; on narrow ones the panel covers the chat, so it starts closed
+function loadPanelOpen() {
+  const wide = typeof window !== "undefined" && window.innerWidth > 1100;
+  try {
+    const saved = window.localStorage.getItem(PANEL_KEY);
+    return saved ? saved === "open" && wide : wide;
+  } catch {
+    return wide;
+  }
+}
+
+// While Steward works: elapsed time, every step so far, and who is thinking
+function Working({ job }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
   return (
-    <div className="chat-msg chat-msg--assistant">
-      <span className="chat-avatar chat-avatar--bot"><Bot size={16} aria-hidden="true" /></span>
-      <div className="chat-bubble chat-thinking">
-        <Spinner /> Thinking… {formatDuration((now - startedAt) / 1000)}
-        <span className="faint"> · local models usually answer in 20–60 s</span>
+    <article className="answer answer--working" aria-label="Steward is working">
+      <div className="working__head">
+        <Spinner /> {job.status === "queued" ? "Waiting for the previous answer…" : "Working…"}
+        <span className="faint">{formatDuration((now - job.startedAt) / 1000)}</span>
+        {job.failures > 2 && <span className="faint">· reconnecting…</span>}
       </div>
-    </div>
+      {job.steps.length > 0 && <StepList steps={job.steps} />}
+      {job.thinking && <div className="working__thinking">{job.thinking} is thinking…</div>}
+    </article>
   );
 }
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState(() => loadMessages());
-  const [sessionId, setSessionId] = useState(() => loadSessionId());
-  const [pendingSince, setPendingSince] = useState(null);
+  const { messages, job, busy, conversations, sessionId, ask, decide, retry, newChat } = useChat();
+  const [panelOpen, setPanelOpen] = useState(loadPanelOpen);
+  const empty = messages.length === 0 && !busy;
+  const current = conversations.find((c) => c.id === sessionId);
 
-  useEffect(() => {
-    saveMessages(messages);
-  }, [messages]);
-
-  // Call the API, show "Thinking…", then add Steward's reply (or the error) to the chat
-  async function runRequest(apiCall) {
-    const startedAt = Date.now();
-    setPendingSince(startedAt);
-    let response;
+  function togglePanel(open) {
+    setPanelOpen(open);
     try {
-      response = await apiCall();
-    } catch (error) {
-      response = { status: "error", reply: error.message };
-    }
-    setMessages((list) => [...list, replyToMessage(response, (Date.now() - startedAt) / 1000)]);
-    setPendingSince(null);
-  }
-
-  function ask(text) {
-    setMessages((list) => [...list, { id: `u-${Date.now()}`, role: "user", content: text, createdAt: new Date().toISOString() }]);
-    runRequest(() => sendChat(text, sessionId));
-  }
-
-  function decide(message, approve) {
-    // Remember the decision on the card, then let the AI continue its paused run
-    setMessages((list) => list.map((m) => (m.id === message.id ? { ...m, decision: approve ? "approved" : "rejected" } : m)));
-    runRequest(() => decideChat(message.runId, approve));
-  }
-
-  function clearChat() {
-    setMessages([]);
-    setSessionId(newSessionId());  // a fresh conversation on the server too
-  }
-
-  function retry() {
-    // Ask the last question again (the failed answer is removed first)
-    const lastUser = [...messages].reverse().find((m) => m.role === "user");
-    if (lastUser) {
-      setMessages((list) => list.slice(0, list.lastIndexOf(lastUser)));
-      ask(lastUser.content);
+      window.localStorage.setItem(PANEL_KEY, open ? "open" : "closed");
+    } catch {
+      // the choice just isn't remembered
     }
   }
 
-  const busy = pendingSince !== null;
   return (
-    <>
-      <PageHeader
-        title="Chat"
-        subtitle="Ask about your files and documents. Everything stays on this computer with a local model."
-        actions={messages.length > 0 && (
-          <Button icon={Trash2} variant="ghost" disabled={busy} onClick={clearChat}>Clear chat</Button>
-        )}
-      />
-      <section className="card chat-card">
-        {messages.length === 0 && !busy ? (
-          <SuggestedPrompts onPick={ask} />
+    <div className={`chat-layout ${panelOpen ? "chat-layout--panel" : ""}`}>
+      <section className="chat-main">
+        <header className="chat-main__bar">
+          <h1 className="chat-main__title">{empty ? "Chat" : (current && current.title) || "Chat"}</h1>
+          <div className="row">
+            {!empty && (
+              <button type="button" className="chat-icon-btn" onClick={newChat} disabled={busy} title="New chat" aria-label="New chat">
+                <SquarePen size={16} />
+              </button>
+            )}
+            {!panelOpen && (
+              <button type="button" className="chat-icon-btn" onClick={() => togglePanel(true)} title="Show workspace" aria-label="Show workspace">
+                <PanelRightOpen size={16} />
+              </button>
+            )}
+          </div>
+        </header>
+        {empty ? (
+          <ChatHome onSend={ask} disabled={busy} />
         ) : (
-          <MessageList messages={messages} onRetry={busy ? null : retry} onDecide={decide} busy={busy}
-            pendingSlot={busy ? <Thinking startedAt={pendingSince} /> : null} />
+          <>
+            <div className="chat-main__scroll">
+              <MessageList messages={messages} onRetry={busy ? null : retry} onDecide={decide} onAsk={ask}
+                busy={busy} pendingSlot={busy ? <Working job={job} /> : null} />
+            </div>
+            <div className="chat-main__dock"><Composer onSend={ask} disabled={busy} /></div>
+          </>
         )}
-        <Composer onSend={ask} disabled={busy} />
       </section>
-    </>
+      {panelOpen && <ChatPanel messages={messages} job={job} busy={busy} onAsk={ask} onClose={() => togglePanel(false)} />}
+    </div>
   );
 }

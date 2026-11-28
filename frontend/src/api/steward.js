@@ -81,6 +81,43 @@ export function decideChat(runId, approve) {
   });
 }
 
+/** Ask a question as a background job; poll it with getChatJob (survives leaving the page). */
+export function startChatJob(message, sessionId) {
+  return request("/steward/chat/jobs", { method: "POST", body: { message, session_id: sessionId } });
+}
+
+/** Approve or reject an approval card as a background job. */
+export function decideChatJob(runId, approve, sessionId) {
+  return request("/steward/chat/decisions", {
+    method: "POST",
+    body: { run_id: runId, approve: Boolean(approve), session_id: sessionId },
+  });
+}
+
+/** One chat job: its status, live steps and (when done) the answer. */
+export function getChatJob(jobId) {
+  return request(`/steward/chat/jobs/${encodeURIComponent(jobId)}`, { timeoutMs: 10000 });
+}
+
+/** Saved conversations, newest first. */
+export function listConversations(limit = 30) {
+  return request(`/steward/chat/conversations?limit=${limit}`);
+}
+
+/** One saved conversation's messages, plus its running job (if any). */
+export function getConversation(sessionId) {
+  return request(`/steward/chat/conversations/${encodeURIComponent(sessionId)}`);
+}
+
+/** Fresh stats and suggestions for a folder (after files were changed). */
+export function getFolderCard(path) {
+  return request(`/steward/chat/folder?path=${encodeURIComponent(path)}`);
+}
+
+export function deleteConversation(sessionId) {
+  return request(`/steward/chat/conversations/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+}
+
 export function getSettings() {
   return request("/steward/settings");
 }

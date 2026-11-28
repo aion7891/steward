@@ -36,7 +36,10 @@ Recommended: **gemma4** (good answers, about 10–30 s) or **qwen3:4b** (smaller
 
 These folders are scanned automatically every hour.
 
-- Each shows its name, its location, and **found** / **missing**.
+- Each shows its name, its location, **found** / **missing**, and **writable** / **read-only**.
+  Read-only folders can be scanned, but Steward can't move, archive or recycle files there. The
+  page tells you the `.env` line that allows changes (for example `STEWARD_DESKTOP_ACCESS=rw`);
+  see [Getting started](01-getting-started.md#which-folders-can-steward-see).
 - **Add** a folder by typing its path, remove one with the 🗑 button, then click **Save folders**.
 - Steward checks each folder the same way as [Scan a folder](03-scan-a-folder.md), and refuses a
   folder that is already inside another watched folder (it would be scanned twice).

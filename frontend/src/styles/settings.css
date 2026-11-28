@@ -38,3 +38,4 @@ select.input { appearance: auto; }
 @media (max-width: 900px) {
   .settings-grid { grid-template-columns: 1fr; }
 }
+.folder-access-hint { font-size: var(--text-sm); line-height: 1.5; margin: 0; }
