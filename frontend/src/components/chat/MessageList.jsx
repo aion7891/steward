@@ -58,7 +58,7 @@ function Sources({ message }) {
   );
 }
 
-const TONES = { error: "error", paused: "paused", approval: "approval" };
+const TONES = { error: "error", paused: "paused", approval: "approval", stopped: "stopped" };
 
 function AssistantMessage({ message, onRetry, onDecide, onAsk, busy }) {
   const tone = TONES[message.status] || "ok";
@@ -79,7 +79,7 @@ function AssistantMessage({ message, onRetry, onDecide, onAsk, busy }) {
           <span>Answered in {formatDuration(message.durationSec)}</span>
         ) : null}
         {tone === "ok" && <CopyButton text={message.content} />}
-        {tone === "error" && onRetry && (
+        {(tone === "error" || tone === "stopped") && onRetry && (
           <Button size="sm" variant="secondary" icon={RotateCcw} onClick={onRetry}>Retry</Button>
         )}
       </div>

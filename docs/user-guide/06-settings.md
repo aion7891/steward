@@ -1,6 +1,7 @@
 # 6. Settings
 
-Change how careful Steward is, which AI it uses, and which folders it watches. Changes apply
+Change how careful Steward is, which AI it uses and which folders it watches, and clear Steward's
+own data. Changes apply
 **immediately** and are **kept after a restart**.
 
 ![The Settings page](images/settings.png)
@@ -40,6 +41,8 @@ These folders are scanned automatically every hour.
   Read-only folders can be scanned, but Steward can't move, archive or recycle files there. The
   page tells you the `.env` line that allows changes (for example `STEWARD_DESKTOP_ACCESS=rw`);
   see [Getting started](01-getting-started.md#which-folders-can-steward-see).
+
+![Watched folders with writable and read-only badges](images/settings-folders.png)
 - **Add** a folder by typing its path, remove one with the 🗑 button, then click **Save folders**.
 - Steward checks each folder the same way as [Scan a folder](03-scan-a-folder.md), and refuses a
   folder that is already inside another watched folder (it would be scanned twice).
@@ -48,6 +51,28 @@ These folders are scanned automatically every hour.
 
 Shows when the hourly scan, the daily clean-up check and the weekly report run. To change it, edit
 the `scheduler:` section in `config.yaml`.
+
+## Data & cleanup
+
+At the bottom of Settings you can clear **Steward's own data**. Files in your folders are never
+touched here.
+
+![Data & cleanup](images/settings-data.png)
+
+| Item | What it is | Buttons |
+|:--|:--|:--|
+| **Chats** | Your conversations, and the AI's memory of them | Clear · Delete for good |
+| **Knowledge notes** | Everything Steward learned about your files, folders, projects and topics | Clear · Delete for good |
+| **Topics only** | Just the topic notes; the other knowledge notes stay | Clear · Delete for good |
+| **Recycle bin** | Files Steward moved to its recycle bin | Empty for good |
+
+- **Clear** asks once, then keeps a **backup**. It appears under **Backups**, where **Restore** puts
+  everything back (chats that exist already are left alone).
+- **Delete for good** and **Empty for good** keep no backup and can't be undone. The button only
+  works after you type **`DELETE`** in the box.
+- Emptying the recycle bin means **Undo** no longer works for those files.
+- While a chat is still answering, Steward waits: finish or **Stop** it, then clear the chats.
+- To delete just one chat, use the 🗑 icon in **Recent chats** ([Chat](04-chat.md#several-chats-and-deleting-them)).
 
 ## "Locked by .env"
 

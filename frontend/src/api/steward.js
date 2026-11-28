@@ -99,6 +99,11 @@ export function getChatJob(jobId) {
   return request(`/steward/chat/jobs/${encodeURIComponent(jobId)}`, { timeoutMs: 10000 });
 }
 
+/** Stop a running chat answer; changes already made stay (and can be undone). */
+export function stopChatJob(jobId) {
+  return request(`/steward/chat/jobs/${encodeURIComponent(jobId)}/stop`, { method: "POST", timeoutMs: 10000 });
+}
+
 /** Saved conversations, newest first. */
 export function listConversations(limit = 30) {
   return request(`/steward/chat/conversations?limit=${limit}`);
@@ -148,4 +153,24 @@ export function getReport(reportId) {
 /** Link that downloads one report file. */
 export function reportDownloadUrl(reportId) {
   return apiUrl(`/steward/reports/${encodeURIComponent(reportId)}/download`);
+}
+
+/** What Steward keeps (chats, knowledge notes, topics, recycle bin) and its backups. */
+export function getDataSummary() {
+  return request("/steward/data");
+}
+
+/** Clear one kind of data; hard deletes for good and needs confirm "DELETE" (the recycle bin always does). */
+export function clearData(target, hard, confirm) {
+  return request("/steward/data/clear", { method: "POST", body: { target, hard: Boolean(hard), confirm } });
+}
+
+/** Put a backup made by "Clear" back. */
+export function restoreBackup(backupId) {
+  return request(`/steward/data/backups/${encodeURIComponent(backupId)}/restore`, { method: "POST" });
+}
+
+/** Delete a backup for good (needs confirm "DELETE"). */
+export function deleteBackup(backupId, confirm) {
+  return request(`/steward/data/backups/${encodeURIComponent(backupId)}/delete`, { method: "POST", body: { confirm } });
 }

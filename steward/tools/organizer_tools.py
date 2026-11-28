@@ -1,5 +1,6 @@
 """Safety-first Agno Toolkit for organizing, ZIP archiving, recycling, and undo."""
 
+import threading
 from pathlib import Path
 
 from agno.tools import Toolkit
@@ -29,7 +30,9 @@ class OrganizerTools(Toolkit):
         self.paths = paths or ToolPaths()
         self.folders = FolderActions(config)
         self.targets = ActionTargets(self.paths, self.folders)
-        self.progress = None
+        # Per chat job (each runs in its own thread, two can run at once): live progress and the
+        # ids of changes really made ("undo that")
+        self._job = threading.local()
         self.organizer = organizer or FileOrganizer(
             config, db, memory_manager=memory_manager, logger=logger
         )
@@ -86,11 +89,8 @@ class OrganizerTools(Toolkit):
             return self._refusal(exc)
         name = Path(folders[0]).name if folders and archive_name == "archive" else archive_name  # zip named after the folder
         proposal = self.organizer.propose_action("archive", files, target_path=name, reason=reason)
-        self.organizer.recycle.on_progress = self.progress
-        try:
-            result = self._approve_and_run(proposal, dry_run)
-        finally:
-            self.organizer.recycle.on_progress = None
+        self.organizer.recycle.on_progress = self._report  # reads the progress of the job's own thread
+        result = self._approve_and_run(proposal, dry_run)
         if result.get("status") == "done":
             for folder in folders:
                 self.folders.remove_emptied_folders(files, folder)
@@ -122,6 +122,29 @@ class OrganizerTools(Toolkit):
         }
         return {"status": overall, "message": messages[overall], "results": results}
 
+    @property
+    def progress(self):
+        """Function(label, done, total) showing live progress for this thread's chat job, or None."""
+        return getattr(self._job, "progress", None)
+
+    @progress.setter
+    def progress(self, value):
+        self._job.progress = value
+
+    @property
+    def done_actions(self):
+        """List collecting ids of changes made by this thread's chat job, or None."""
+        return getattr(self._job, "done_actions", None)
+
+    @done_actions.setter
+    def done_actions(self, value):
+        self._job.done_actions = value
+
+    def _report(self, label, done, total):
+        """Pass zip progress to this thread's chat job, if any."""
+        if self.progress is not None:
+            self.progress(label, done, total)
+
     def preflight(self, tool_name, args):
         """Return why a paused file change cannot work, or None (runs before the approval card)."""
         return self.targets.check(tool_name, args)
@@ -139,7 +162,10 @@ class OrganizerTools(Toolkit):
         if proposal["status"] != "proposed":
             return proposal
         self.organizer.approve_action(proposal["id"])
-        return self.organizer.execute_action(proposal["id"], dry_run=self._safe_dry_run(dry_run))
+        result = self.organizer.execute_action(proposal["id"], dry_run=self._safe_dry_run(dry_run))
+        if result.get("status") == "done" and self.done_actions is not None:
+            self.done_actions.append(result["id"])
+        return result
 
     def _safe_dry_run(self, requested):
         """Return the dry-run flag to use: the config's dry-run always wins.

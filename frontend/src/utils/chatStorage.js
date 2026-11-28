@@ -122,6 +122,9 @@ export function replyToMessage(response, durationSec) {
     return { ...base, status: "approval", content: reply, sources: [], runId: response.run_id,
       approvals: response.approvals || [], decision: null };
   }
+  if (response.status === "stopped") {
+    return { ...base, status: "stopped", content: reply || "Stopped.", sources: [] };
+  }
   if (response.status === "paused" || isPausedReply(reply)) {
     return { ...base, status: "paused", content: PAUSED_TEXT, sources: [] };
   }

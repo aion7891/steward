@@ -13,6 +13,8 @@ class ChatApprovals:
     """
 
     MAX_PENDING = 20
+    REJECTED_REPLY = "You rejected this, so Steward did not change any files."
+    ALREADY_REJECTED = "The user already said no to this change. Do not try it again; answer briefly."
     SUMMARIES = {
         "delete_files": "Move {count} file(s) to Steward's recycle bin",
         "archive_files": "Zip {count} file(s) into an archive",
@@ -62,6 +64,11 @@ class ChatApprovals:
             if str(run_id) not in self.pending:
                 raise KeyError(f"No approval is waiting for run {run_id}. It may have been decided already.")
             return self.pending.pop(str(run_id))
+
+    def clear(self):
+        """Forget every waiting approval (used when all chats are cleared)."""
+        with self.lock:
+            self.pending.clear()
 
     def open_requirements(self, run):
         """Return the steps in a run that still need a yes/no."""
@@ -117,6 +124,28 @@ class ChatApprovals:
             return template.format(folders=", ".join(info["folders"]), files=files, target=target, tool=tool_name)
         template = self.SUMMARIES.get(tool_name, "Run {tool}")
         return template.format(count=len(paths), target=target, tool=tool_name)
+
+    def settle_rejected(self, run, resume, attempts=2):
+        """After a rejection, let the AI finish its turn; any new file change it tries is declined too.
+
+        The AI's own words are not shown afterwards (a small model once claimed "archived" here);
+        resuming only keeps the conversation history right ("the user said no").
+
+        Args:
+            run: the paused run whose steps were just rejected.
+            resume: function(run) that continues a run and returns the next run.
+            attempts: how many new tries are declined before giving up.
+        """
+        for _ in range(attempts + 1):
+            try:
+                run = resume(run)
+            except Exception:  # the reply is already decided; a failed follow-up changes nothing
+                return
+            open_steps = self.open_requirements(run)
+            if not open_steps:
+                return
+            for req in open_steps:
+                req.reject(self.ALREADY_REJECTED)
 
     def decide(self, run, approve, note=None):
         """Confirm or reject every open step of a run (it can then be resumed).

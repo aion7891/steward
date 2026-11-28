@@ -284,7 +284,7 @@ sequenceDiagram
     Note over W,DB: ⚠️ PRD steps 2-4 missing: file is NOT scanned,<br/>NOT analysed, NO proposal / approval card is created
 ```
 
-**Tested:** a new `new-contract-scan.pdf` was logged within 3 seconds ✅. But the suggestion was **`/Users/kumarnishant/Documents/Documents`**: the destination map is hard-coded to your *real* home folder ([scanner.py:25-31](../steward/scanner.py#L25-L31)), even when testing a sandbox, and inside Docker it points to a folder that doesn't exist. No proposal was created and the file wasn't added to the `files` table. See [08](08-issues-and-risks.md) #7.
+**Tested:** a new `new-contract-scan.pdf` was logged within 3 seconds ✅. But the suggestion was **`/Users/you/Documents/Documents`**: the destination map is hard-coded to your *real* home folder ([scanner.py:25-31](../steward/scanner.py#L25-L31)), even when testing a sandbox, and inside Docker it points to a folder that doesn't exist. No proposal was created and the file wasn't added to the `files` table. See [08](08-issues-and-risks.md) #7.
 
 ---
 

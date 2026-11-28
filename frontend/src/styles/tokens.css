@@ -2,38 +2,47 @@
    Change a value once and the whole UI follows. Dark mode swaps the colours only. */
 
 :root {
-  /* Brand */
-  --color-brand: #4f46e5;
-  --color-brand-hover: #4338ca;
-  --color-brand-soft: #eef2ff;
-  --color-brand-text: #3730a3;
+  /* Palette (neumorphism): #E8E8E8 page, #FFFFFF cards, #D0D0D0 lines, #C8E0F4 accent, #F5E0E8 approvals.
+     The light accents are surfaces; text on them uses deeper shades of the same hue so it stays readable. */
+
+  /* Brand: a deeper blue for lines, links, focus rings and progress bars */
+  --color-brand: #3b6f9e;
+  --color-brand-hover: #2f5f8a;
+  --color-brand-soft: #c8e0f4;
+  --color-brand-text: #1e4b73;
   --color-on-brand: #ffffff;
+  /* Accent fill: primary buttons, the active page, your chat messages */
+  --color-accent: #c8e0f4;
+  --color-accent-hover: #b4d3ee;
+  --color-on-accent: #1e4b73;
 
   /* Surfaces and text */
-  --color-bg: #f6f7fb;
+  --color-bg: #e8e8e8;
   --color-surface: #ffffff;
-  --color-surface-muted: #f1f3f8;
-  --color-border: #e3e6ee;
-  --color-border-strong: #cdd2de;
-  --color-text: #111827;
-  --color-text-muted: #5b6475;
-  --color-text-faint: #8a93a6;
+  --color-surface-muted: #f3f3f3;
+  --color-edge: #f7f7f7;
+  --color-border: #d0d0d0;
+  --color-border-strong: #b9b9b9;
+  --color-text: #1f2933;
+  --color-text-muted: #4f5b67;
+  --color-text-faint: #5c6670;
 
-  /* Status */
-  --color-success: #15803d;
-  --color-success-soft: #e7f6ec;
-  --color-warning: #b45309;
-  --color-warning-soft: #fef4e2;
-  --color-danger: #b91c1c;
-  --color-danger-soft: #fdecec;
-  --color-info: #0369a1;
-  --color-info-soft: #e6f3fb;
+  /* Status (warnings and approvals use the pink) */
+  --color-success: #2c6e47;
+  --color-success-soft: #dceee3;
+  --color-warning: #8a3358;
+  --color-warning-soft: #f5e0e8;
+  --color-danger: #b3261e;
+  --color-danger-soft: #fbe4e2;
+  --color-info: #2f5f8a;
+  --color-info-soft: #c8e0f4;
+  --color-on-status: #ffffff;
 
   /* Charts */
-  --chart-1: #4f46e5;
-  --chart-2: #0ea5e9;
-  --chart-3: #f59e0b;
-  --chart-grid: #e7e9f0;
+  --chart-1: #3b6f9e;
+  --chart-2: #b9668b;
+  --chart-3: #8a939e;
+  --chart-grid: #dddddd;
 
   /* Typography (system fonts: no downloads, works fully offline) */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -60,8 +69,10 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-full: 999px;
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  /* Soft neumorphic depth: light from the top left, shade to the bottom right */
+  --shadow-sm: 3px 3px 7px rgba(160, 160, 172, 0.32), -3px -3px 7px rgba(255, 255, 255, 0.85);
+  --shadow-md: 7px 7px 16px rgba(160, 160, 172, 0.34), -7px -7px 16px rgba(255, 255, 255, 0.9);
+  --shadow-inset: inset 2px 2px 5px rgba(160, 160, 172, 0.35), inset -2px -2px 5px rgba(255, 255, 255, 0.9);
 
   /* Layout */
   --sidebar-width: 240px;
@@ -71,36 +82,42 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-brand: #818cf8;
-    --color-brand-hover: #a5b4fc;
-    --color-brand-soft: #1e1b4b;
-    --color-brand-text: #c7d2fe;
-    --color-on-brand: #0b0e14;
+    --color-brand: #8ec1ea;
+    --color-brand-hover: #a9d0f0;
+    --color-brand-soft: #2b4157;
+    --color-brand-text: #cfe4f6;
+    --color-on-brand: #0f1a24;
+    --color-accent: #34506a;
+    --color-accent-hover: #3d5c79;
+    --color-on-accent: #e3f0fa;
 
-    --color-bg: #0b0e14;
-    --color-surface: #131720;
-    --color-surface-muted: #1a1f2b;
-    --color-border: #262c3a;
-    --color-border-strong: #343c4e;
-    --color-text: #e8ebf2;
-    --color-text-muted: #a3abbd;
-    --color-text-faint: #717a8f;
+    --color-bg: #1c1f24;
+    --color-surface: #252930;
+    --color-surface-muted: #2d3239;
+    --color-edge: #2d3239;
+    --color-border: #3a4048;
+    --color-border-strong: #4b525c;
+    --color-text: #e9ecef;
+    --color-text-muted: #b0b8c1;
+    --color-text-faint: #99a2ac;
 
-    --color-success: #4ade80;
-    --color-success-soft: #0f2a1a;
-    --color-warning: #fbbf24;
-    --color-warning-soft: #2b2010;
-    --color-danger: #f87171;
-    --color-danger-soft: #2d1414;
-    --color-info: #38bdf8;
-    --color-info-soft: #0c2433;
+    --color-success: #8fd3a8;
+    --color-success-soft: #1f3328;
+    --color-warning: #f2b8cf;
+    --color-warning-soft: #3e2a33;
+    --color-danger: #f59a9a;
+    --color-danger-soft: #3a2020;
+    --color-info: #8ec1ea;
+    --color-info-soft: #23384b;
+    --color-on-status: #10161c;
 
-    --chart-1: #818cf8;
-    --chart-2: #38bdf8;
-    --chart-3: #fbbf24;
-    --chart-grid: #232938;
+    --chart-1: #8ec1ea;
+    --chart-2: #e59cbb;
+    --chart-3: #9aa4b0;
+    --chart-grid: #333941;
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
+    --shadow-sm: 3px 3px 7px rgba(0, 0, 0, 0.45), -2px -2px 6px rgba(255, 255, 255, 0.03);
+    --shadow-md: 7px 7px 16px rgba(0, 0, 0, 0.5), -5px -5px 14px rgba(255, 255, 255, 0.035);
+    --shadow-inset: inset 2px 2px 5px rgba(0, 0, 0, 0.45), inset -2px -2px 5px rgba(255, 255, 255, 0.03);
   }
 }

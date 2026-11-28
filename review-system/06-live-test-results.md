@@ -64,7 +64,7 @@ The demo uses its own [config.demo.yaml](demo/config.demo.yaml), so **all data s
 | 26 | Settings type-safety | `PUT /settings {"dry_run":"false"}` | dry_run false | **dry_run = True** (`bool("false")`) | ⚠️ |
 | 27 | Settings file | after PUT | comments kept | `config.demo.yaml` rewritten, **all comments gone** | ⚠️ |
 | 28 | **Ghost files** | recycle `pasta-copy.md`, rescan | row removed | row **still in DB**, still in RAG manifest and OKF; still reported as a duplicate | 🐞 |
-| 29 | Downloads watcher | drop a new PDF | event + proposal | event logged in 3 s ✅; suggested **`/Users/kumarnishant/Documents/Documents`** (real home, hard-coded); **no proposal**, not added to `files` | ⚠️ |
+| 29 | Downloads watcher | drop a new PDF | event + proposal | event logged in 3 s ✅; suggested **`/Users/you/Documents/Documents`** (real home, hard-coded); **no proposal**, not added to `files` | ⚠️ |
 | 30 | Chat, `gemma3:4b` (default in `config.yaml`) | `--chat` | answer | `does not support tools (status code: 400)` | 🐞 |
 | 31 | Chat, `qwen3:4b` | `--chat` | answer | correct, cited path + quote, **~100 s** | ✅ |
 | 32 | Chat, **`gemma4`** | `--chat` × 6 | correct every time | **3/6 correct** (18–34 s). Failures: Team routed to **AnalyzerAgent**, which has no RAG and looked for a file literally named "Acme invoice" | ⚠️ |

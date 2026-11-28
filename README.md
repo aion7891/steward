@@ -8,6 +8,18 @@ Steward is a local-first, multi-agent AI assistant that runs continuously on you
 - **Recycle-first & verified ZIP archiving** — never permanently deletes directly; every action is logged in SQLite and OKF `memory/decisions/` for undo
 - **Protected paths & privacy filter** — blocks protected folders even if approved, and skips `.env`/key files from reading, ChromaDB, and OKF
 - **Local-first privacy** — defaults to local Ollama, SQLite, persistent ChromaDB, OKF v0.3 Markdown bundle, and `127.0.0.1`-only Docker port bindings
+- **Rejections are honoured** — a "no" (button or typed) means the change never happens; Steward words that answer itself
+- **Read-only by default in Docker** — Desktop and Documents can only be changed after you set `STEWARD_DESKTOP_ACCESS=rw` / `STEWARD_DOCUMENTS_ACCESS=rw`
+
+## The chat (0.12.0)
+
+Type *"can you search for a file named invoice"*, *"which file is the largest?"*, then *"delete
+it"* or *"archive it"*: Steward remembers what "it" is, shows each step live, and asks for approval
+before any file changes. *"no"* is honoured (and reported truthfully), *"undo that"* or *"can you
+recover it"* puts the last change back, **■ Stop** ends a long answer, and two chats can answer at
+once. Settings → *Data & cleanup* clears chats, knowledge notes and the recycle bin (with backups, or
+for good after typing `DELETE`). See the [User Guide](docs/user-guide/04-chat.md) and
+[what's new in 0.12](review-system/13-whats-new-0.12.md).
 
 ---
 

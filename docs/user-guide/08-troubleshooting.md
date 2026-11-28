@@ -16,6 +16,16 @@
 | **"… must be 'rw' or 'ro' (found 'yes')"** | The access switch in `.env` has another value | Use exactly `rw` (allow changes) or `ro` (read-only) |
 | Dashboard still mentions a file you deleted | Steward's list catches up on the next scans | Run a scan; full clean-up of old entries is on the to-do list for a future version |
 | The page looks out of date | It refreshes every minute | Click **Refresh** on the Dashboard |
+| Chat: **"This answer is no longer available"** | Steward restarted while it was answering | Ask again; your question is still in the chat |
+| Chat: **"reconnecting…"** next to *Working…* | The page lost contact with Steward for a moment | Wait; it reconnects by itself (start Steward if the red box appears) |
+| Chat: **"Starting…"** for a while | Two chats are already answering; yours is next | Wait a moment, or press **Stop** in another chat |
+| Chat: **"Stopped after 5 minutes without an answer"** | The question took too long (often a very broad one) | Ask something more specific, for example with the exact path |
+| Chat: the 🗑 icon in Recent chats is greyed out | That chat is still answering | Wait for the answer, or open it and press **Stop** |
+| Chat: "it" or "the file" means the wrong thing | Small models sometimes mix up earlier files | Say the file name or path once; Steward remembers it from then on |
+| Settings: **Delete for good** stays greyed out | It needs the word typed exactly | Type `DELETE` in capitals |
+| Settings: clearing chats says **"still answering"** | A chat answer is running | Wait for it or press **Stop**, then try again |
+| Chat: a red step **"… could not finish"** | A helper's AI call failed (often Ollama is busy or out of memory) | Ask again; close other apps if it keeps happening |
+| Chat: the answer seems to stop early | Steward stops a helper after a few tries, so it can't loop forever | Ask a more specific question, for example with the exact path |
 
 ## Frequently asked questions
 
@@ -40,5 +50,6 @@ recognized quickly, so repeat scans are light.
 It runs on your computer. Expect 10–40 seconds per answer with gemma4; faster computers answer quicker.
 
 **How do I start over?**
-Delete `data/settings.override.yaml` to undo Settings changes. Your files themselves are never
-part of Steward's data.
+Use [Settings → Data & cleanup](06-settings.md#data--cleanup) to clear chats and knowledge notes, and
+delete `data/settings.override.yaml` to undo Settings changes. Your files themselves are never part
+of Steward's data.

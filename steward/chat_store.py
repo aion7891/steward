@@ -66,6 +66,41 @@ class ChatStore:
             data["decision"] = decision
             self.db._execute("UPDATE chat_messages SET data = ? WHERE id = ?", (json.dumps(data), row["id"]))
 
+    def pending_approval(self, conversation_id):
+        """Return the run_id of the newest approval card nobody has decided yet, or None.
+
+        Args:
+            conversation_id: the browser's session id.
+        """
+        for message in reversed(self.messages(conversation_id, limit=10)):
+            data = message["data"]
+            if message["role"] == "assistant" and data.get("status") == "approval":
+                return None if data.get("decision") else data.get("run_id")
+        return None
+
+    def last_actions(self, conversation_id):
+        """Return (message id, action ids) of the newest answer that changed files and was not undone.
+
+        Args:
+            conversation_id: the browser's session id.
+        """
+        for message in reversed(self.messages(conversation_id, limit=50)):
+            data = message["data"]
+            if message["role"] == "assistant" and data.get("actions") and not data.get("undone"):
+                return message["id"], list(data["actions"])
+        return None
+
+    def mark_undone(self, message_id):
+        """Remember that the file changes of an answer were undone (so "undo" is not repeated).
+
+        Args:
+            message_id: the chat_messages row id.
+        """
+        rows = self.db._query_all("SELECT data FROM chat_messages WHERE id = ?", (int(message_id),))
+        if rows:
+            data = {**json.loads(rows[0]["data"]), "undone": True}
+            self.db._execute("UPDATE chat_messages SET data = ? WHERE id = ?", (json.dumps(data), int(message_id)))
+
     def list_conversations(self, limit=30):
         """Return the newest conversations first: id, title, updated_at, message_count.
 
@@ -90,6 +125,44 @@ class ChatStore:
             "ORDER BY id DESC LIMIT ?", (str(conversation_id), int(limit)),
         )
         return [{**row, "data": json.loads(row["data"])} for row in reversed(rows)]
+
+    def counts(self):
+        """Return {"conversations", "messages"}: how many are saved."""
+        conversations = self.db._query_all("SELECT COUNT(*) AS n FROM chat_conversations")[0]["n"]
+        messages = self.db._query_all("SELECT COUNT(*) AS n FROM chat_messages")[0]["n"]
+        return {"conversations": conversations, "messages": messages}
+
+    def export_all(self):
+        """Return every conversation and message as plain rows (used for the backup before clearing)."""
+        return {
+            "conversations": self.db._query_all("SELECT * FROM chat_conversations ORDER BY created_at"),
+            "messages": self.db._query_all("SELECT * FROM chat_messages ORDER BY id"),
+        }
+
+    def clear_all(self):
+        """Delete every conversation and message."""
+        self.db._execute("DELETE FROM chat_messages")
+        self.db._execute("DELETE FROM chat_conversations")
+
+    def import_rows(self, payload):
+        """Put conversations from a backup back; ones that exist already are skipped. Returns how many came back.
+
+        Args:
+            payload: dict made by export_all().
+        """
+        existing = {row["id"] for row in self.db._query_all("SELECT id FROM chat_conversations")}
+        restored = [c for c in payload.get("conversations", []) if c["id"] not in existing]
+        for conv in restored:
+            self.db._execute("INSERT INTO chat_conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                             (conv["id"], conv["title"], conv["created_at"], conv["updated_at"]))
+        wanted = {c["id"] for c in restored}
+        for msg in payload.get("messages", []):  # new row ids, same order, so nothing collides
+            if msg["conversation_id"] in wanted:
+                self.db._execute(
+                    "INSERT INTO chat_messages (conversation_id, role, content, run_id, data, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (msg["conversation_id"], msg["role"], msg["content"], msg["run_id"], msg["data"], msg["created_at"]))
+        return len(restored)
 
     def delete(self, conversation_id):
         """Delete a conversation and its messages; return True when it existed.

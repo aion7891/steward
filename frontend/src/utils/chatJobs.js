@@ -12,8 +12,16 @@ export function jobState(job) {
     status: job.status,
     steps: job.steps || [],
     thinking: job.thinking || null,
+    stopping: Boolean(job.stopping),
     failures: 0,
   };
+}
+
+/** After a typed "no", mark the approval card it rejected (the server says which one). */
+export function markTypedDecision(messages, result) {
+  const runId = result && result.decided_run_id;
+  if (!runId) return messages;
+  return messages.map((m) => (m.runId === runId && !m.decision ? { ...m, decision: "rejected" } : m));
 }
 
 /** Turn a finished job's result into an assistant message (with its steps and duration). */

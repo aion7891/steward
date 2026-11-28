@@ -1,6 +1,6 @@
 {
   "name": "steward-web",
-  "version": "0.10.0",
+  "version": "0.12.0",
   "private": true,
   "description": "Professional web frontend for Steward (dashboard, folder scans, chat).",
   "type": "module",

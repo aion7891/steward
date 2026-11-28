@@ -147,7 +147,7 @@ Also split each `OrganizerTools` destructive tool so it **never calls `approve_a
 
 **Where:** [scanner.py:25-31](../steward/scanner.py#L25-L31) `DESTINATION_MAP = {"document": "~/Documents/Documents", …}`. [watcher.py:65-97](../steward/watcher.py#L65-L97) only writes an activity event.
 
-**Evidence:** test #29: the sandbox file was suggested to `/Users/kumarnishant/Documents/Documents`, 0 proposals, and the file wasn't in `files`.
+**Evidence:** test #29: the sandbox file was suggested to `/Users/you/Documents/Documents`, 0 proposals, and the file wasn't in `files`.
 
 **Fix:** move the destinations to `config.yaml` (`organizer.destinations:`) so they resolve against the watched roots. In `inspect_file`, (1) upsert the file via the scanner, (2) find similar files in OKF/RAG (same project or topic) for a smarter destination, and (3) create a `proposed` move. The PRD flow then works end to end.
 

@@ -4,7 +4,7 @@ from agno.agent import Agent
 from agno.db.sqlite import SqliteDb
 from agno.team import Team
 
-from steward.tools import DocumentReaderTools, FileScannerTools, OKFTools, OrganizerTools, ReportTools, SoftwareTools
+from steward.tools import DocumentReaderTools, FileScannerTools, FinderTools, OKFTools, OrganizerTools, ReportTools, SoftwareTools
 from steward.tools.tool_paths import ToolPaths
 
 
@@ -25,9 +25,7 @@ class StewardAgents:
         self.app = app
         self.model = model or app.model_factory.create_chat_model()
         self.rag_index = rag_index
-        self.session_db = SqliteDb(
-            db_file=str(app.config.get_path("data_dir") / "agno_sessions.db")
-        )
+        self.session_db = SqliteDb(db_file=str(app.config.get_path("data_dir") / "agno_sessions.db"))
 
         # One translator for every tool: the user's Mac paths -> the paths Steward can open
         self.paths = ToolPaths()
@@ -68,10 +66,10 @@ class StewardAgents:
         return Agent(
             name="ScannerAgent",
             role="Scans configured folders, detects anomalies, and inspects installed software.",
-            tools=[self.scanner_tools, self.software_tools],
+            tools=[self.scanner_tools, FinderTools(self.app.config, self.app.db, paths=self.paths), self.software_tools],
             instructions=(
                 "You scan local folders and inspect file metadata and installed software. "
-                "Always report exact counts and file paths returned by your tools. "
+                "Report exact counts and full file paths from your tools. Find a file by name with find_files, list a folder with list_folder, the largest files with find_large_files(min_mb=0). "
                 "When the user names a folder, call scan_folder with that path exactly as written. "
                 + self.PATH_RULES
             ),
@@ -174,13 +172,17 @@ class StewardAgents:
                 "ANY question about what a file or document says (amounts, dates, names, contents, "
                 "'what is in', 'how much', 'when') goes to ChatAgent, which searches the documents. "
                 "AnalyzerAgent only when the user asks to summarize or analyze a file they name by path. "
-                "ScannerAgent for scans, duplicates, large/old files and installed apps. "
+                "ScannerAgent for scans, finding files by name, listing a folder, duplicates, old files, apps and sizes ('largest'). "
                 "OrganizerAgent for moving, archiving, deleting or cleaning up files. "
                 "RecommenderAgent for suggestions; ReporterAgent for usage reports. "
                 "Never invent file paths: pass the user's words to the member agent, and keep "
-                "every path exactly as the user wrote it (Mac paths like /Users/... or ~/... are fine)."
+                "every path exactly as the user wrote it (Mac paths like /Users/... or ~/... are fine). "
+                "When the user says 'it', 'the file' or 'that folder', take the exact path from Steward's "
+                "notes on this conversation and put it in the task you hand over."
             ),
             add_history_to_context=True,
+            add_team_history_to_members=True,  # helpers see the last answers too ("delete the file")
+            num_team_history_runs=3,
             markdown=True,
             # Small local models sometimes hand the same task over again and again; stop after a few
             tool_call_limit=self.TEAM_HANDOFF_LIMIT,
