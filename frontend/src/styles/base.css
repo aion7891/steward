@@ -67,6 +67,8 @@ select {
   min-height: 100%;
 }
 
+.app--collapsed { grid-template-columns: var(--sidebar-collapsed-width) 1fr; }
+
 .app__main {
   display: flex;
   flex-direction: column;
@@ -142,6 +144,7 @@ select {
     grid-template-rows: auto 1fr;
     align-content: start;
   }
+  .app--collapsed { grid-template-columns: minmax(0, 1fr); }  /* phones: the top strip, no collapsing */
   .grid--two {
     grid-template-columns: 1fr;
   }

@@ -6,6 +6,7 @@ import { Outlet } from "react-router-dom";
 import { getHealth } from "../../api/steward.js";
 import { usePolling } from "../../hooks/usePolling.js";
 import { onDataChanged } from "../../utils/dataEvents.js";
+import { loadFlag, saveFlag, SIDEBAR_KEY } from "../../utils/layoutPrefs.js";
 import Alert from "../ui/Alert.jsx";
 import Sidebar from "./Sidebar.jsx";
 import TopBar from "./TopBar.jsx";
@@ -46,9 +47,11 @@ export default function AppShell() {
   const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => onDataChanged(() => setRefreshKey((n) => n + 1)), []);
   const { data: health, error } = usePolling(getHealth, HEALTH_INTERVAL_MS, true, refreshKey);
+  // The sidebar can collapse to icons; remembered for this browser
+  const [collapsed, setCollapsed] = useState(() => loadFlag(SIDEBAR_KEY, false));
   return (
-    <div className="app">
-      <Sidebar />
+    <div className={`app ${collapsed ? "app--collapsed" : ""}`}>
+      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(saveFlag(SIDEBAR_KEY, !collapsed))} />
       <div className="app__main">
         <TopBar health={health} error={error} />
         <main className="app__content">

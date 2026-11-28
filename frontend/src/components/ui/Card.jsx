@@ -1,9 +1,10 @@
-// A white panel with an optional header (title, subtitle, actions on the right).
+// A white panel with an optional header (title, subtitle, actions on the right). `collapsed`
+// shows only the header (used by cards that can be folded).
 
-export default function Card({ title, subtitle, actions, children, className = "", bodyClassName = "" }) {
+export default function Card({ title, subtitle, actions, children, className = "", bodyClassName = "", collapsed = false, id }) {
   const hasHeader = title || subtitle || actions;
   return (
-    <section className={`card ${className}`}>
+    <section id={id} className={`card ${collapsed ? "card--collapsed" : ""} ${className}`}>
       {hasHeader && (
         <header className="card__header">
           <div>
@@ -13,7 +14,7 @@ export default function Card({ title, subtitle, actions, children, className = "
           {actions && <div className="row">{actions}</div>}
         </header>
       )}
-      <div className={`card__body ${bodyClassName}`}>{children}</div>
+      {!collapsed && <div className={`card__body ${bodyClassName}`}>{children}</div>}
     </section>
   );
 }

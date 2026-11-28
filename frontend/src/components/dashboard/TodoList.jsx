@@ -1,6 +1,7 @@
 // "What needs to be done": proposed actions (approve / reject) and approved ones waiting to run.
-import { Check, CheckCircle2, Play, X } from "lucide-react";
-import { useState } from "react";
+import { Check, CheckCircle2, ChevronDown, ChevronRight, Play, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import { approveAction, executeAction, rejectAction } from "../../api/steward.js";
 import Alert from "../ui/Alert.jsx";
@@ -8,6 +9,8 @@ import Badge from "../ui/Badge.jsx";
 import Button from "../ui/Button.jsx";
 import Card from "../ui/Card.jsx";
 import EmptyState from "../ui/EmptyState.jsx";
+import { loadFlag, saveFlag, TODO_KEY } from "../../utils/layoutPrefs.js";
+import { TODO_LIMIT, todoSummary, visibleTodo } from "../../utils/todoView.js";
 import ActionItem from "./ActionItem.jsx";
 
 const CONFIRM_REAL = "This changes files on disk (deleted files go to Steward's recycle bin and can be undone). Continue?";
@@ -27,9 +30,24 @@ export function describeResult(result) {
   return { tone: "danger", text: (result && result.message) || "The action could not be completed." };
 }
 
-export default function TodoList({ todo, waiting, dryRun, onChanged, title = "To-do" }) {
+/**
+ * The to-do card. On the Dashboard it can be folded (`collapsible`, remembered per browser) and shows
+ * the first `limit` items with a "Show all" button; the "to review" badge (#todo) opens it.
+ */
+export default function TodoList({ todo, waiting, dryRun, onChanged, title = "To-do", collapsible = false, limit = null }) {
   const [busyId, setBusyId] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [open, setOpen] = useState(() => !collapsible || loadFlag(TODO_KEY, true));
+  const [showAll, setShowAll] = useState(false);
+  const location = useLocation();
+
+  // Arriving from the "to review" badge (/dashboard#todo): open the card and bring it into view
+  useEffect(() => {
+    if (collapsible && location.hash === "#todo") {
+      setOpen(saveFlag(TODO_KEY, true));
+      setTimeout(() => document.getElementById("todo")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    }
+  }, [collapsible, location.hash, location.key]);
 
   async function run(actionId, apiCall, confirmText) {
     if (confirmText && !window.confirm(confirmText)) {
@@ -49,8 +67,18 @@ export default function TodoList({ todo, waiting, dryRun, onChanged, title = "To
   const subtitle = dryRun
     ? "Dry-run is ON: approving previews an action without changing files."
     : "Dry-run is OFF: approving changes files right away.";
+  const shown = visibleTodo(todo, showAll, limit);
+  const toggle = collapsible && (
+    <button type="button" className="card-toggle" onClick={() => setOpen(saveFlag(TODO_KEY, !open))}
+      aria-expanded={open} aria-controls="todo" title={open ? "Fold the to-do list" : "Show the to-do list"}>
+      {open ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
+      {open ? "Hide" : "Show"}
+    </button>
+  );
   return (
-    <Card title={title} subtitle={subtitle} actions={<Badge tone={todo.length ? "warning" : "success"}>{todo.length} open</Badge>}>
+    <Card id={collapsible ? "todo" : undefined} title={title} subtitle={open ? subtitle : todoSummary(todo, waiting)}
+      collapsed={!open}
+      actions={<><Badge tone={todo.length ? "warning" : "success"}>{todo.length.toLocaleString("en-US")} open</Badge>{toggle}</>}>
       <div className="stack">
         {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
         {todo.length === 0 && waiting.length === 0 ? (
@@ -59,7 +87,7 @@ export default function TodoList({ todo, waiting, dryRun, onChanged, title = "To
           </EmptyState>
         ) : (
           <ul className="action-list">
-            {todo.map((action) => (
+            {shown.map((action) => (
               <ActionItem key={action.id} action={action}>
                 <Button size="sm" variant="primary" icon={Check} loading={busyId === action.id}
                   onClick={() => run(action.id, (id) => approveAction(id), dryRun ? null : CONFIRM_REAL)}>
@@ -73,6 +101,11 @@ export default function TodoList({ todo, waiting, dryRun, onChanged, title = "To
             ))}
           </ul>
         )}
+        {todo.length > shown.length || showAll ? (
+          <Button size="sm" variant="secondary" onClick={() => setShowAll(!showAll)}>
+            {showAll ? `Show the first ${TODO_LIMIT}` : `Show all ${todo.length.toLocaleString("en-US")}`}
+          </Button>
+        ) : null}
         {waiting.length > 0 && <WaitingList waiting={waiting} dryRun={dryRun} busyId={busyId} run={run} />}
       </div>
     </Card>

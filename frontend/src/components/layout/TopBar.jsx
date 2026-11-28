@@ -48,7 +48,7 @@ export default function TopBar({ health, error }) {
         </Badge>
       )}
       {pending > 0 && (
-        <Link to="/dashboard" title="Actions waiting for your decision">
+        <Link to="/dashboard#todo" title="Open the to-do list on the Dashboard">
           <Badge tone="warning" icon={Bell}>
             {pending} to review
           </Badge>
