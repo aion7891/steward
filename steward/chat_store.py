@@ -66,6 +66,41 @@ class ChatStore:
             data["decision"] = decision
             self.db._execute("UPDATE chat_messages SET data = ? WHERE id = ?", (json.dumps(data), row["id"]))
 
+    def pending_approval(self, conversation_id):
+        """Return the run_id of the newest approval card nobody has decided yet, or None.
+
+        Args:
+            conversation_id: the browser's session id.
+        """
+        for message in reversed(self.messages(conversation_id, limit=10)):
+            data = message["data"]
+            if message["role"] == "assistant" and data.get("status") == "approval":
+                return None if data.get("decision") else data.get("run_id")
+        return None
+
+    def last_actions(self, conversation_id):
+        """Return (message id, action ids) of the newest answer that changed files and was not undone.
+
+        Args:
+            conversation_id: the browser's session id.
+        """
+        for message in reversed(self.messages(conversation_id, limit=50)):
+            data = message["data"]
+            if message["role"] == "assistant" and data.get("actions") and not data.get("undone"):
+                return message["id"], list(data["actions"])
+        return None
+
+    def mark_undone(self, message_id):
+        """Remember that the file changes of an answer were undone (so "undo" is not repeated).
+
+        Args:
+            message_id: the chat_messages row id.
+        """
+        rows = self.db._query_all("SELECT data FROM chat_messages WHERE id = ?", (int(message_id),))
+        if rows:
+            data = {**json.loads(rows[0]["data"]), "undone": True}
+            self.db._execute("UPDATE chat_messages SET data = ? WHERE id = ?", (json.dumps(data), int(message_id)))
+
     def list_conversations(self, limit=30):
         """Return the newest conversations first: id, title, updated_at, message_count.
 

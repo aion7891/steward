@@ -37,7 +37,7 @@ function Working({ job }) {
   return (
     <article className="answer answer--working" aria-label="Steward is working">
       <div className="working__head">
-        <Spinner /> {job.status === "queued" ? "Waiting for the previous answer…" : "Working…"}
+        <Spinner /> {job.stopping ? "Stopping…" : job.status === "queued" ? "Waiting for the previous answer…" : "Working…"}
         <span className="faint">{formatDuration((now - job.startedAt) / 1000)}</span>
         {job.failures > 2 && <span className="faint">· reconnecting…</span>}
       </div>
@@ -48,7 +48,7 @@ function Working({ job }) {
 }
 
 export default function ChatPage() {
-  const { messages, job, busy, conversations, sessionId, ask, decide, retry, newChat } = useChat();
+  const { messages, job, busy, conversations, sessionId, ask, decide, stop, retry, newChat } = useChat();
   const [panelOpen, setPanelOpen] = useState(loadPanelOpen);
   const empty = messages.length === 0 && !busy;
   const current = conversations.find((c) => c.id === sessionId);
@@ -88,7 +88,7 @@ export default function ChatPage() {
               <MessageList messages={messages} onRetry={busy ? null : retry} onDecide={decide} onAsk={ask}
                 busy={busy} pendingSlot={busy ? <Working job={job} /> : null} />
             </div>
-            <div className="chat-main__dock"><Composer onSend={ask} disabled={busy} /></div>
+            <div className="chat-main__dock"><Composer onSend={ask} disabled={busy} onStop={stop} stopping={Boolean(job && job.stopping)} /></div>
           </>
         )}
       </section>

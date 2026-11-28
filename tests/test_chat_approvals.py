@@ -81,7 +81,7 @@ class TestApproveFromChat:
         assert server.agents.team.sessions == ["s-1"]  # the conversation id reaches the AI
 
     def test_approve_and_reject_resume_the_run(self, tmp_path):
-        _, _, client = build(tmp_path)
+        _, server, client = build(tmp_path)
         client.post("/steward/chat", json={"message": "delete report.tmp"})
         approved = client.post("/steward/chat/run-1/decision", json={"approve": True}).json()
         assert approved["status"] == "ok" and approved["reply"] == "Moved report.tmp to the recycle bin."
@@ -89,7 +89,9 @@ class TestApproveFromChat:
         assert client.post("/steward/chat/run-1/decision", json={"approve": True}).status_code == 404
         client.post("/steward/chat", json={"message": "delete report.tmp"})
         rejected = client.post("/steward/chat/run-1/decision", json={"approve": False}).json()
-        assert rejected["reply"] == "OK, I left the file alone."
+        # Steward words a rejection itself; the AI is still told, so its history stays right
+        assert rejected["reply"] == "You rejected this, so Steward did not change any files."
+        assert server.agents.team.rejection_note == "The user rejected this action in the chat."
 
     def test_bad_decisions_are_refused(self, tmp_path):
         _, _, client = build(tmp_path)

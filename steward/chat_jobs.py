@@ -6,7 +6,14 @@ import time
 import uuid
 from datetime import datetime, timezone
 
+from agno.team import Team
+
+from steward.chat_commands import ChatCommands
 from steward.chat_steps import ChatSteps
+
+
+class ChatStopped(BaseException):
+    """Raised between AI events to end a job early (BaseException, so no "except Exception" hides it)."""
 
 
 class ChatJobs:
@@ -15,11 +22,16 @@ class ChatJobs:
     A local model can only answer one question at a time anyway. Each job records its live
     steps (ChatSteps), and its question and answer are saved in the ChatStore, so the
     conversation survives tab switches, reloads and restarts. A job is
-    {"id", "kind", "session_id", "status" ("queued"|"running"|"done"), "steps", "thinking",
-    "result", "created_at"}.
+    {"id", "kind", "session_id", "status" ("queued"|"running"|"done"), "stopping", "steps",
+    "thinking", "result", "created_at"}. A job can be stopped, and stops itself after MAX_SECONDS.
     """
 
     MAX_JOBS = 50
+    MAX_SECONDS = 300
+    STOPPED = {
+        "user": "Stopped. Steward did not finish this answer.",
+        "timeout": "Stopped after 5 minutes without an answer. Try a shorter or more specific question.",
+    }
 
     def __init__(self, chat, store, mapper=None, run_inline=False):
         """Create the queue (and the worker thread unless run_inline).
@@ -34,6 +46,8 @@ class ChatJobs:
         self.store = store
         self.mapper = mapper
         self.run_inline = run_inline
+        self.max_seconds = self.MAX_SECONDS
+        self.commands = ChatCommands(store, lambda: chat.agents.organizer_tools)
         self.jobs = {}
         self.lock = threading.Lock()
         self.queue = queue.Queue()
@@ -43,11 +57,22 @@ class ChatJobs:
     def ask(self, message, session_id):
         """Queue a question; the question is saved at once, the answer when it is ready.
 
+        A typed "no" while an approval card waits rejects that card, and "undo that" undoes the
+        last change from this chat, without depending on the AI to understand them.
+
         Args:
             message: the user's question (already checked to be non-empty).
             session_id: the browser's conversation id.
         """
         self.store.add_message(session_id, "user", message)
+        command = self.commands.classify(message)
+        run_id = self.store.pending_approval(session_id) if command == "reject" else None
+        if run_id:
+            self.store.set_decision(run_id, "rejected")
+            return self._start({"kind": "decision", "run_id": run_id, "approve": False,
+                                "session_id": session_id, "typed": True})
+        if command == "undo":
+            return self._start({"kind": "undo", "session_id": session_id})
         return self._start({"kind": "message", "message": message, "session_id": session_id})
 
     def decide(self, run_id, approve, session_id):
@@ -70,6 +95,24 @@ class ChatJobs:
         with self.lock:
             job = self.jobs.get(str(job_id))
             return self._view(job) if job else None
+
+    def stop(self, job_id):
+        """Ask a queued or running job to stop; return its view, or None when unknown.
+
+        File changes already made stay made (they can be undone); the job ends at the next AI event.
+
+        Args:
+            job_id: id returned by ask() or decide().
+        """
+        with self.lock:
+            job = self.jobs.get(str(job_id))
+        if job is None:
+            return None
+        if job["status"] != "done":
+            job["stop"] = "user"
+            if job.get("run_id"):
+                Team.cancel_run(job["run_id"])  # also tells Agno, which stops at its next check
+        return self.get(job_id)
 
     def active_for(self, session_id):
         """Return the queued or running job of a conversation, or None.
@@ -100,34 +143,58 @@ class ChatJobs:
     def _work(self):
         """Worker thread: answer queued jobs one after another, forever."""
         while True:
-            job = self.queue.get()
-            self._run(job)
+            self._run(self.queue.get())
 
     def _run(self, job):
         """Answer one job, record its steps and save the answer (never raises)."""
         job["status"] = "running"
         recorder, started = job["recorder"], time.time()
         tools = self.chat.agents.organizer_tools
-        tools.progress = recorder.progress  # "archiving 3/14" appears on the running step
+        tools.progress, tools.done_actions = recorder.progress, []  # live "3/14"; changes for "undo that"
         try:
-            if job["kind"] == "message":
-                result = self.chat.answer(job["message"], job["session_id"], listener=recorder.handle)
-            else:
-                result = self.chat.decide(job["run_id"], job["approve"], listener=recorder.handle)
+            result = self._answer(job, self._listener(job, started))
+        except ChatStopped as stop:
+            result = {"status": "stopped", "reply": self.STOPPED[stop.args[0]], "sources": []}
         except KeyError as exc:
             result = {"status": "error", "reply": str(exc.args[0]), "sources": []}
         except Exception as exc:  # a failed answer must never stop the worker thread
             result = {"status": "error", "reply": f"Steward could not answer: {exc}", "sources": []}
         finally:
-            tools.progress = None
+            tools.progress, actions, tools.done_actions = None, tools.done_actions, None
         result = {**result, "steps": recorder.finish(), "duration_sec": round(time.time() - started, 1)}
+        if actions:
+            result["actions"] = actions
+        if job.get("typed"):
+            result["decided_run_id"] = job["run_id"]  # the browser marks that card "rejected"
         result = self.mapper.to_host_deep(result) if self.mapper is not None else result
         self.store.add_message(job["session_id"], "assistant", result.get("reply", ""), result)
         job.update(status="done", result=result)
+
+    def _answer(self, job, listener):
+        """Run the job's question, decision or undo and return the chat reply."""
+        if job.get("stop"):
+            raise ChatStopped(job["stop"])  # stopped while still waiting in the queue
+        if job["kind"] == "message":
+            return self.chat.answer(job["message"], job["session_id"], listener=listener)
+        if job["kind"] == "undo":
+            return self.commands.undo(job["session_id"])
+        return self.chat.decide(job["run_id"], job["approve"], listener=listener)
+
+    def _listener(self, job, started):
+        """Return the function that receives the AI's events: records steps, honours Stop and the time limit."""
+        def listen(event):
+            if job.get("run_id") is None:
+                job["run_id"] = getattr(event, "run_id", None)
+            if not job.get("stop") and time.time() - started > self.max_seconds:
+                job["stop"] = "timeout"
+            if job.get("stop"):
+                raise ChatStopped(job["stop"])
+            job["recorder"].handle(event)
+        return listen
 
     def _view(self, job):
         """Return the browser's view of a job: no internals, live steps, Mac paths."""
         live = job["recorder"].snapshot()
         view = {key: job.get(key) for key in ("id", "kind", "session_id", "status", "result", "created_at")}
-        view.update(steps=live["steps"], thinking=live["thinking"])
+        view.update(steps=live["steps"], thinking=live["thinking"], stopping=bool(job.get("stop")))
         return self.mapper.to_host_deep(view) if self.mapper is not None else view

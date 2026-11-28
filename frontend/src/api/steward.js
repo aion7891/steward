@@ -99,6 +99,11 @@ export function getChatJob(jobId) {
   return request(`/steward/chat/jobs/${encodeURIComponent(jobId)}`, { timeoutMs: 10000 });
 }
 
+/** Stop a running chat answer; changes already made stay (and can be undone). */
+export function stopChatJob(jobId) {
+  return request(`/steward/chat/jobs/${encodeURIComponent(jobId)}/stop`, { method: "POST", timeoutMs: 10000 });
+}
+
 /** Saved conversations, newest first. */
 export function listConversations(limit = 30) {
   return request(`/steward/chat/conversations?limit=${limit}`);

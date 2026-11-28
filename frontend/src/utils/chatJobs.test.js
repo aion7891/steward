@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { interruptedMessage, jobResultToMessage, jobState, serverMessagesToChat, stepLine } from "./chatJobs.js";
+import {
+  interruptedMessage, jobResultToMessage, jobState, markTypedDecision, serverMessagesToChat, stepLine,
+} from "./chatJobs.js";
 
 const STEPS = [{ id: 1, agent: "Scanner", title: "Scanning /Users/you/Desktop/docs", status: "done", progress: null }];
 
@@ -48,5 +50,21 @@ describe("small helpers", () => {
     expect(stepLine({ ...STEPS[0], progress: { done: 3, total: 4 } })).toBe("Scanner · Scanning /Users/you/Desktop/docs (3/4)");
     expect(stepLine({ kind: "handoff", agent: "Chat", title: "Handing over to Chat" })).toBe("Handing over to Chat");
     expect(interruptedMessage().status).toBe("error");
+  });
+});
+
+describe("stopping and typed decisions", () => {
+  it("shows a stopped answer as stopped, and remembers a stop request", () => {
+    expect(jobResultToMessage({ status: "stopped", reply: "Stopped. Steward did not finish this answer." }))
+      .toMatchObject({ status: "stopped", content: "Stopped. Steward did not finish this answer." });
+    expect(jobState({ id: "j1", stopping: true }).stopping).toBe(true);
+    expect(jobState({ id: "j2" }).stopping).toBe(false);
+  });
+
+  it("marks the card a typed 'no' rejected, and nothing else", () => {
+    const list = [{ id: "a", runId: "r1", decision: null }, { id: "b", runId: "r2", decision: null }];
+    const marked = markTypedDecision(list, { decided_run_id: "r1" });
+    expect(marked.map((m) => m.decision)).toEqual(["rejected", null]);
+    expect(markTypedDecision(list, { status: "ok" })).toBe(list);
   });
 });

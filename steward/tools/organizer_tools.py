@@ -30,6 +30,7 @@ class OrganizerTools(Toolkit):
         self.folders = FolderActions(config)
         self.targets = ActionTargets(self.paths, self.folders)
         self.progress = None
+        self.done_actions = None  # a list while a chat job runs: ids of changes really made ("undo that")
         self.organizer = organizer or FileOrganizer(
             config, db, memory_manager=memory_manager, logger=logger
         )
@@ -139,7 +140,10 @@ class OrganizerTools(Toolkit):
         if proposal["status"] != "proposed":
             return proposal
         self.organizer.approve_action(proposal["id"])
-        return self.organizer.execute_action(proposal["id"], dry_run=self._safe_dry_run(dry_run))
+        result = self.organizer.execute_action(proposal["id"], dry_run=self._safe_dry_run(dry_run))
+        if result.get("status") == "done" and self.done_actions is not None:
+            self.done_actions.append(result["id"])
+        return result
 
     def _safe_dry_run(self, requested):
         """Return the dry-run flag to use: the config's dry-run always wins.

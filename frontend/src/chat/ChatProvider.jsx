@@ -3,8 +3,10 @@
 // the browser copy is only a fallback while the server can't be reached.
 import { createContext, useContext, useEffect, useState } from "react";
 
-import { decideChatJob, getChatJob, getConversation, listConversations, startChatJob } from "../api/steward.js";
-import { interruptedMessage, jobResultToMessage, jobState, POLL_MS, serverMessagesToChat } from "../utils/chatJobs.js";
+import { decideChatJob, getChatJob, getConversation, listConversations, startChatJob, stopChatJob } from "../api/steward.js";
+import {
+  interruptedMessage, jobResultToMessage, jobState, markTypedDecision, POLL_MS, serverMessagesToChat,
+} from "../utils/chatJobs.js";
 import { loadMessages, loadSessionId, newSessionId, saveMessages, saveSessionId } from "../utils/chatStorage.js";
 
 const ChatContext = createContext(null);
@@ -55,11 +57,11 @@ export function ChatProvider({ children }) {
         const data = await getChatJob(job.id);
         if (stopped) return;
         if (data.job.status === "done") {
-          setMessages((list) => [...list, jobResultToMessage(data.job.result)]);
+          setMessages((list) => [...markTypedDecision(list, data.job.result), jobResultToMessage(data.job.result)]);
           setJob(null);
         } else {
           setJob((current) => current && { ...current, status: data.job.status, steps: data.job.steps,
-            thinking: data.job.thinking, failures: 0 });
+            thinking: data.job.thinking, stopping: current.stopping || data.job.stopping, failures: 0 });
         }
       } catch (error) {
         if (stopped) return;
@@ -93,6 +95,17 @@ export function ChatProvider({ children }) {
     start(() => decideChatJob(message.runId, approve, sessionId));
   }
 
+  // Ask the server to stop the running answer; the next poll brings the "Stopped" message
+  async function stop() {
+    if (!job || job.stopping) return;
+    setJob((current) => current && { ...current, stopping: true });
+    try {
+      await stopChatJob(job.id);
+    } catch {
+      setJob((current) => current && { ...current, stopping: false });  // let the user try again
+    }
+  }
+
   function retry() {
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
     if (lastUser) {
@@ -111,6 +124,6 @@ export function ChatProvider({ children }) {
     setSessionId(saveSessionId(id));
   }
 
-  const value = { sessionId, messages, job, busy, conversations, ask, decide, retry, newChat, openChat };
+  const value = { sessionId, messages, job, busy, conversations, ask, decide, stop, retry, newChat, openChat };
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }

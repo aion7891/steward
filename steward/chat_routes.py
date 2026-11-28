@@ -8,7 +8,7 @@ from steward.chat_store import ChatStore
 
 
 class ChatRoutes:
-    """Registers /steward/chat/jobs (ask, poll), /steward/chat/decisions and /steward/chat/conversations."""
+    """Registers /steward/chat/jobs (ask, poll, stop), /steward/chat/decisions and /steward/chat/conversations."""
 
     MAX_MESSAGE = 4000
     GONE = "This answer is no longer available (Steward may have restarted). Please ask again."
@@ -61,6 +61,13 @@ class ChatRoutes:
         @api.get("/steward/chat/jobs/{job_id}")
         def poll(job_id):
             job = self.jobs.get(job_id)
+            if job is None:
+                raise HTTPException(status_code=404, detail=self.GONE)
+            return {"status": "ok", "job": job}
+
+        @api.post("/steward/chat/jobs/{job_id}/stop")
+        def stop(job_id):
+            job = self.jobs.stop(job_id)
             if job is None:
                 raise HTTPException(status_code=404, detail=self.GONE)
             return {"status": "ok", "job": job}

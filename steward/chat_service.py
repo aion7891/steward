@@ -73,6 +73,11 @@ class ChatService:
         """
         paused = self.approvals.pop(run_id)
         self.approvals.decide(paused, bool(approve), note)
+        if not approve:
+            # Steward words the answer itself: the AI must never claim a rejected change happened
+            self.approvals.settle_rejected(paused, lambda run: self._continue(run, listener))
+            return self._show({"status": "ok", "reply": ChatApprovals.REJECTED_REPLY, "sources": [],
+                               "session_id": getattr(paused, "session_id", None)})
 
         def run():
             return self._continue(paused, listener), None
