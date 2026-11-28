@@ -1,0 +1,123 @@
+/* Design tokens: every colour, size and shadow used by the app lives here.
+   Change a value once and the whole UI follows. Dark mode swaps the colours only. */
+
+:root {
+  /* Palette (neumorphism): #E8E8E8 page, #FFFFFF cards, #D0D0D0 lines, #C8E0F4 accent, #F5E0E8 approvals.
+     The light accents are surfaces; text on them uses deeper shades of the same hue so it stays readable. */
+
+  /* Brand: a deeper blue for lines, links, focus rings and progress bars */
+  --color-brand: #3b6f9e;
+  --color-brand-hover: #2f5f8a;
+  --color-brand-soft: #c8e0f4;
+  --color-brand-text: #1e4b73;
+  --color-on-brand: #ffffff;
+  /* Accent fill: primary buttons, the active page, your chat messages */
+  --color-accent: #c8e0f4;
+  --color-accent-hover: #b4d3ee;
+  --color-on-accent: #1e4b73;
+
+  /* Surfaces and text */
+  --color-bg: #e8e8e8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f3f3f3;
+  --color-edge: #f7f7f7;
+  --color-border: #d0d0d0;
+  --color-border-strong: #b9b9b9;
+  --color-text: #1f2933;
+  --color-text-muted: #4f5b67;
+  --color-text-faint: #5c6670;
+
+  /* Status (warnings and approvals use the pink) */
+  --color-success: #2c6e47;
+  --color-success-soft: #dceee3;
+  --color-warning: #8a3358;
+  --color-warning-soft: #f5e0e8;
+  --color-danger: #b3261e;
+  --color-danger-soft: #fbe4e2;
+  --color-info: #2f5f8a;
+  --color-info-soft: #c8e0f4;
+  --color-on-status: #ffffff;
+
+  /* Charts */
+  --chart-1: #3b6f9e;
+  --chart-2: #b9668b;
+  --chart-3: #8a939e;
+  --chart-grid: #dddddd;
+
+  /* Typography (system fonts: no downloads, works fully offline) */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  /* Spacing scale (4 px steps) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Shape and depth */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+  /* Soft neumorphic depth: light from the top left, shade to the bottom right */
+  --shadow-sm: 3px 3px 7px rgba(160, 160, 172, 0.32), -3px -3px 7px rgba(255, 255, 255, 0.85);
+  --shadow-md: 7px 7px 16px rgba(160, 160, 172, 0.34), -7px -7px 16px rgba(255, 255, 255, 0.9);
+  --shadow-inset: inset 2px 2px 5px rgba(160, 160, 172, 0.35), inset -2px -2px 5px rgba(255, 255, 255, 0.9);
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --topbar-height: 60px;
+  --content-max: 1280px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-brand: #8ec1ea;
+    --color-brand-hover: #a9d0f0;
+    --color-brand-soft: #2b4157;
+    --color-brand-text: #cfe4f6;
+    --color-on-brand: #0f1a24;
+    --color-accent: #34506a;
+    --color-accent-hover: #3d5c79;
+    --color-on-accent: #e3f0fa;
+
+    --color-bg: #1c1f24;
+    --color-surface: #252930;
+    --color-surface-muted: #2d3239;
+    --color-edge: #2d3239;
+    --color-border: #3a4048;
+    --color-border-strong: #4b525c;
+    --color-text: #e9ecef;
+    --color-text-muted: #b0b8c1;
+    --color-text-faint: #99a2ac;
+
+    --color-success: #8fd3a8;
+    --color-success-soft: #1f3328;
+    --color-warning: #f2b8cf;
+    --color-warning-soft: #3e2a33;
+    --color-danger: #f59a9a;
+    --color-danger-soft: #3a2020;
+    --color-info: #8ec1ea;
+    --color-info-soft: #23384b;
+    --color-on-status: #10161c;
+
+    --chart-1: #8ec1ea;
+    --chart-2: #e59cbb;
+    --chart-3: #9aa4b0;
+    --chart-grid: #333941;
+
+    --shadow-sm: 3px 3px 7px rgba(0, 0, 0, 0.45), -2px -2px 6px rgba(255, 255, 255, 0.03);
+    --shadow-md: 7px 7px 16px rgba(0, 0, 0, 0.5), -5px -5px 14px rgba(255, 255, 255, 0.035);
+    --shadow-inset: inset 2px 2px 5px rgba(0, 0, 0, 0.45), inset -2px -2px 5px rgba(255, 255, 255, 0.03);
+  }
+}

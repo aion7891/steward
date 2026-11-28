@@ -1,0 +1,126 @@
+# Steward Docker Compose configuration, connecting to native host Ollama.
+# Make sure Ollama is running on your host machine (`ollama serve`).
+# Before starting, optionally export host apps:
+#   uv run python scripts/export_host_inventory.py
+#
+#   docker compose up -d                      -> steward-api, steward-worker, steward-web (http://127.0.0.1:8080)
+#   docker compose --profile legacy up -d     -> also the old Streamlit UI (http://127.0.0.1:8501)
+
+services:
+  steward-api:
+    build: .
+    container_name: steward-api
+    command: ["python", "-m", "steward.api"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - STEWARD_CONFIG_PATH=/app/config.docker.yaml
+      - STEWARD_API_HOST=0.0.0.0
+      - STEWARD_API_PORT=7777
+      - OLLAMA_HOST=${DOCKER_OLLAMA_HOST:-http://host.docker.internal:11434}
+      # Mac paths behind each mount, so "Scan a folder" accepts normal Mac paths
+      - STEWARD_HOST_HOME=${HOME}
+      - STEWARD_HOST_DOCUMENTS_DIR=${STEWARD_DOCUMENTS_DIR:-${HOME}/Documents}
+      - STEWARD_HOST_DESKTOP_DIR=${STEWARD_DESKTOP_DIR:-${HOME}/Desktop}
+      - STEWARD_HOST_DOWNLOADS_DIR=${STEWARD_DOWNLOADS_DIR:-${HOME}/Downloads}
+      - STEWARD_HOST_EXTRA_DIR=${STEWARD_EXTRA_DIR:-}
+      # The project folder, so Steward's own files (data/archives, reports) show as Mac paths
+      - STEWARD_HOST_APP_DIR=${PWD:-}
+      # Steward also checks these switches: only exactly "rw" allows changes (Docker accepts any value)
+      - STEWARD_DOCUMENTS_ACCESS=${STEWARD_DOCUMENTS_ACCESS:-ro}
+      - STEWARD_DESKTOP_ACCESS=${STEWARD_DESKTOP_ACCESS:-ro}
+      - STEWARD_EXTRA_ACCESS=${STEWARD_EXTRA_ACCESS:-ro}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:7777:7777"
+    volumes:
+      # Read-only by default; set STEWARD_DOCUMENTS_ACCESS=rw / STEWARD_DESKTOP_ACCESS=rw in .env
+      # to let Steward move, archive or recycle files there (always after your approval)
+      - ${STEWARD_DOCUMENTS_DIR:-~/Documents}:/data/Documents:${STEWARD_DOCUMENTS_ACCESS:-ro}
+      - ${STEWARD_DESKTOP_DIR:-~/Desktop}:/data/Desktop:${STEWARD_DESKTOP_ACCESS:-ro}
+      - ${STEWARD_DOWNLOADS_DIR:-~/Downloads}:/data/Downloads
+      # Optional extra folder to scan; set STEWARD_EXTRA_DIR in .env (STEWARD_EXTRA_ACCESS=rw to allow changes)
+      - ${STEWARD_EXTRA_DIR:-./host-inventory}:/data/Extra:${STEWARD_EXTRA_ACCESS:-ro}
+      - ./knowledge:/app/knowledge
+      - ./data:/app/data
+      - ./chroma:/app/chroma
+      - ./reports:/app/reports
+      - ./host-inventory:/app/host-inventory:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:7777/steward/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  steward-worker:
+    build: .
+    container_name: steward-worker
+    command: ["python", "-m", "steward.worker"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - STEWARD_CONFIG_PATH=/app/config.docker.yaml
+      - OLLAMA_HOST=${DOCKER_OLLAMA_HOST:-http://host.docker.internal:11434}
+      - STEWARD_DOCUMENTS_ACCESS=${STEWARD_DOCUMENTS_ACCESS:-ro}
+      - STEWARD_DESKTOP_ACCESS=${STEWARD_DESKTOP_ACCESS:-ro}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Read-only by default; set STEWARD_DOCUMENTS_ACCESS=rw / STEWARD_DESKTOP_ACCESS=rw in .env
+      # to let Steward move, archive or recycle files there (always after your approval)
+      - ${STEWARD_DOCUMENTS_DIR:-~/Documents}:/data/Documents:${STEWARD_DOCUMENTS_ACCESS:-ro}
+      - ${STEWARD_DESKTOP_DIR:-~/Desktop}:/data/Desktop:${STEWARD_DESKTOP_ACCESS:-ro}
+      - ${STEWARD_DOWNLOADS_DIR:-~/Downloads}:/data/Downloads
+      - ./knowledge:/app/knowledge
+      - ./data:/app/data
+      - ./chroma:/app/chroma
+      - ./reports:/app/reports
+      - ./host-inventory:/app/host-inventory:ro
+    depends_on:
+      steward-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  steward-web:
+    build: ./frontend
+    container_name: steward-web
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      steward-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # Legacy Streamlit UI: only started with `docker compose --profile legacy up -d`
+  steward-ui:
+    build: .
+    container_name: steward-ui
+    profiles: ["legacy"]
+    command:
+      [
+        "streamlit",
+        "run",
+        "steward/ui.py",
+        "--server.address=0.0.0.0",
+        "--server.port=8501",
+        "--server.headless=true",
+      ]
+    environment:
+      - STEWARD_API_URL=http://steward-api:7777
+    ports:
+      - "127.0.0.1:8501:8501"
+    volumes:
+      - ./reports:/app/reports:ro
+    depends_on:
+      steward-api:
+        condition: service_healthy
+    restart: unless-stopped

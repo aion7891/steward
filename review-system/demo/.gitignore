@@ -1,0 +1,7 @@
+# Everything the demo generates (safe to delete, rebuilt by run_demo.sh)
+sample_home/
+data/
+chroma/
+knowledge/
+reports/
+host-inventory/

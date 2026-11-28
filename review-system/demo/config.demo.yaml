@@ -1,0 +1,66 @@
+# Demo configuration: points Steward ONLY at the fake sample_home folder.
+# Every relative path below is created inside review-system/demo/ because
+# the demo commands are run from that folder.
+
+app:
+  name: "Steward (demo)"
+  version: "0.9.0"
+  environment: "demo"
+  log_level: "WARNING"
+
+paths:
+  data_dir: "data"
+  db_path: "data/steward.db"
+  vector_store_dir: "chroma"
+  okf_dir: "knowledge"
+  recycle_dir: "data/recycle"
+  reports_dir: "reports"
+  logs_dir: "data/logs"
+  host_inventory_file: "host-inventory/apps.json"
+
+scanner:
+  watched_folders:
+    - "sample_home/Documents"
+    - "sample_home/Downloads"
+    - "sample_home/Desktop"
+  downloads_folder: "sample_home/Downloads"
+  ignored_dirs: [".git", ".venv", "node_modules", "__pycache__"]
+  ignored_extensions: [".tmp", ".part", ".crdownload"]
+  large_file_mb: 2        # small on purpose so the 3 MB .dmg counts as "large"
+  stale_days: 90
+  debounce_seconds: 0.5
+
+models:
+  provider: "ollama"
+  model_id: "gemma4"      # supports tool calling (gemma3:4b does NOT, agents fail with it)
+  host: "http://localhost:11434"
+  temperature: 0.2
+  embedding_provider: "ollama"
+  embedding_model: "nomic-embed-text"
+  embedding_dimensions: 768
+
+rag:
+  collection_name: "documents"
+  chunk_size: 800
+  chunk_overlap: 120
+  max_file_chars: 100000
+  max_read_mb: 20
+  default_top_k: 3
+
+safety:
+  dry_run: true
+  require_confirmation: true
+  move_to_recycle_first: true
+  recycle_retention_days: 30
+  protected_paths:
+    - "sample_home/Documents/Work/Clients"
+
+scheduler:
+  scan_interval_minutes: 60
+  cleanup_interval_hours: 24
+  report_day: "sunday"
+
+server:
+  host: "127.0.0.1"
+  port: 7777
+  ui_port: 8501

@@ -1,0 +1,23 @@
+.git/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.env
+data/
+chroma/
+vector_store/
+knowledge/
+reports/
+host-inventory/
+*.db
+*.sqlite
+*.sqlite3
+*.egg-info/
+.DS_Store
+.idea/
+.vscode/
+project-skill.md
+Steward System Design.pdf

@@ -1,0 +1,66 @@
+/* Styles used only by the "Scan a folder" page. The page reuses dashboard list styles too. */
+@import "./dashboard.css";
+
+.grid--two-even {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+/* ---------- Form ---------- */
+.quick-picks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-2); font-size: var(--text-sm); }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  height: 28px; padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong); border-radius: var(--radius-full);
+  background: var(--color-surface); font-size: var(--text-sm); cursor: pointer;
+}
+.chip:hover { border-color: var(--color-brand); color: var(--color-brand-text); }
+.how-list { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-2); color: var(--color-text-muted); font-size: var(--text-sm); }
+
+/* ---------- Progress ---------- */
+.progress { height: 8px; background: var(--color-surface-muted); border-radius: var(--radius-full); overflow: hidden; }
+.progress__fill { height: 100%; background: var(--color-brand); border-radius: var(--radius-full); transition: width 400ms ease; }
+.steps { list-style: none; margin: var(--space-4) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); }
+.steps__item { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-faint); }
+.steps__dot { width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--radius-full); border: 2px solid var(--color-border-strong); }
+.steps__item--active { color: var(--color-text); font-weight: 600; }
+.steps__item--active .steps__dot { border-color: var(--color-brand); box-shadow: 0 0 0 3px var(--color-brand-soft); }
+.steps__item--done { color: var(--color-text-muted); }
+.steps__item--done .steps__dot { background: var(--color-success); border-color: var(--color-success); color: var(--color-on-status); }
+
+/* ---------- Findings ---------- */
+.findings { display: flex; flex-direction: column; gap: var(--space-2); }
+.finding { border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.finding__summary { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); cursor: pointer; list-style: none; }
+.finding__summary::-webkit-details-marker { display: none; }
+.finding__summary::before { content: "▸"; color: var(--color-text-faint); transition: transform 120ms ease; }
+.finding[open] > .finding__summary::before { transform: rotate(90deg); }
+.finding__title { font-weight: 600; }
+.finding__hint { flex: 1; }
+.finding__size { font-weight: 600; }
+.finding__empty { padding: 0 var(--space-4) var(--space-3); }
+.file-list { list-style: none; margin: 0; padding: 0 var(--space-4) var(--space-2); }
+.dup-group { border-top: 1px dashed var(--color-border); padding-top: var(--space-2); }
+.file-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--color-border); font-size: var(--text-sm); }
+.file-row:first-child { border-top: 0; }
+.file-row__main { flex: 1; min-width: 0; }
+.file-row__name { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-row__path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-row__size { min-width: 64px; text-align: right; font-weight: 600; }
+
+/* ---------- Recent folder scans ---------- */
+.recent-scans { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.recent-scans__item {
+  width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: var(--space-2) var(--space-3); border: 0; border-radius: var(--radius-md);
+  background: transparent; text-align: left; cursor: pointer;
+}
+.recent-scans__item:hover { background: var(--color-surface-muted); }
+.recent-scans__item--active { background: var(--color-brand-soft); }
+.recent-scans__name { font-weight: 600; font-size: var(--text-sm); }
+.recent-scans__path { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); }
+
+@media (max-width: 900px) {
+  .grid--two-even { grid-template-columns: 1fr; }
+  .file-row { flex-wrap: wrap; }
+}
