@@ -3,7 +3,9 @@
 // the browser copy is only a fallback while the server can't be reached.
 import { createContext, useContext, useEffect, useState } from "react";
 
-import { decideChatJob, getChatJob, getConversation, listConversations, startChatJob, stopChatJob } from "../api/steward.js";
+import {
+  decideChatJob, deleteConversation, getChatJob, getConversation, listConversations, startChatJob, stopChatJob,
+} from "../api/steward.js";
 import {
   interruptedMessage, jobResultToMessage, jobState, markTypedDecision, POLL_MS, serverMessagesToChat,
 } from "../utils/chatJobs.js";
@@ -29,11 +31,18 @@ export function ChatProvider({ children }) {
 
   useEffect(() => saveMessages(messages), [messages]);
 
-  // Recent chats for the sidebar: refreshed when an answer finishes or another chat opens
-  useEffect(() => {
-    if (busy) return;
+  const refreshConversations = () =>
     listConversations(12).then((data) => setConversations(data.conversations || [])).catch(() => {});
-  }, [busy, sessionId]);
+
+  // Recent chats for the sidebar: refreshed when an answer finishes or another chat opens
+  useEffect(() => { refreshConversations(); }, [busy, sessionId]);
+
+  // While another chat is still answering in the background, keep its "working" dot up to date
+  useEffect(() => {
+    if (!conversations.some((c) => c.running)) return undefined;
+    const timer = setTimeout(refreshConversations, 3000);
+    return () => clearTimeout(timer);
+  }, [conversations]);
 
   // Load the server's copy of the conversation and pick up an answer that is still running
   useEffect(() => {
@@ -115,16 +124,26 @@ export function ChatProvider({ children }) {
     }
   }
 
+  // Each chat has its own running answer: leaving a chat stops watching its answer here (the server
+  // keeps working on it, and opening that chat again picks it up)
   function newChat() {
+    setJob(null);
     setMessages([]);
     setSessionId(newSessionId());
   }
 
   function openChat(id) {
+    setJob(null);
     setMessages([]);
     setSessionId(saveSessionId(id));
   }
 
-  const value = { sessionId, messages, job, busy, conversations, ask, decide, stop, retry, newChat, openChat };
+  async function deleteChat(id) {
+    await deleteConversation(id);  // the server refuses while that chat is still answering
+    if (id === sessionId) newChat();
+    refreshConversations();
+  }
+
+  const value = { sessionId, messages, job, busy, conversations, ask, decide, stop, retry, newChat, openChat, deleteChat };
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }

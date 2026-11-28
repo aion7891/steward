@@ -15,7 +15,8 @@ const LINKS = [
 
 export default function Sidebar() {
   const chat = useChat();
-  const chatBusy = Boolean(chat && chat.busy);
+  // The dot next to Chat: this chat or another one is still answering in the background
+  const chatBusy = Boolean(chat && (chat.busy || chat.conversations.some((c) => c.running)));
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">

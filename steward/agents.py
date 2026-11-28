@@ -4,7 +4,7 @@ from agno.agent import Agent
 from agno.db.sqlite import SqliteDb
 from agno.team import Team
 
-from steward.tools import DocumentReaderTools, FileScannerTools, OKFTools, OrganizerTools, ReportTools, SoftwareTools
+from steward.tools import DocumentReaderTools, FileScannerTools, FinderTools, OKFTools, OrganizerTools, ReportTools, SoftwareTools
 from steward.tools.tool_paths import ToolPaths
 
 
@@ -66,10 +66,10 @@ class StewardAgents:
         return Agent(
             name="ScannerAgent",
             role="Scans configured folders, detects anomalies, and inspects installed software.",
-            tools=[self.scanner_tools, self.software_tools],
+            tools=[self.scanner_tools, FinderTools(self.app.config, self.app.db, paths=self.paths), self.software_tools],
             instructions=(
                 "You scan local folders and inspect file metadata and installed software. "
-                "Always report exact counts and file paths returned by your tools; for the largest files call find_large_files(min_mb=0). "
+                "Report exact counts and full file paths from your tools. Find a file by name with find_files, list a folder with list_folder, the largest files with find_large_files(min_mb=0). "
                 "When the user names a folder, call scan_folder with that path exactly as written. "
                 + self.PATH_RULES
             ),
@@ -172,7 +172,7 @@ class StewardAgents:
                 "ANY question about what a file or document says (amounts, dates, names, contents, "
                 "'what is in', 'how much', 'when') goes to ChatAgent, which searches the documents. "
                 "AnalyzerAgent only when the user asks to summarize or analyze a file they name by path. "
-                "ScannerAgent for scans, duplicates, old files, installed apps and file sizes ('largest', 'biggest'). "
+                "ScannerAgent for scans, finding files by name, listing a folder, duplicates, old files, apps and sizes ('largest'). "
                 "OrganizerAgent for moving, archiving, deleting or cleaning up files. "
                 "RecommenderAgent for suggestions; ReporterAgent for usage reports. "
                 "Never invent file paths: pass the user's words to the member agent, and keep "

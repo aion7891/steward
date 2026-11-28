@@ -7,7 +7,7 @@ class ChatCommands:
     """Recognises a few plain commands so they never depend on the AI understanding them.
 
     - "no", "don't", "cancel", "reject"... while an approval card waits: the card is rejected.
-    - "undo that", "revert", "revert back"... : the last file change made from this chat is undone.
+    - "undo that", "revert back", "can you recover it"... : the last file change made from this chat is undone.
 
     Only short messages that are clearly one of these count; anything else goes to the AI.
     """
@@ -22,8 +22,8 @@ class ChatCommands:
               "i", "approve", "approved", "want", "reject", "the", "change", "changes", "archive", "delete",
               "move", "zip", "them", "way", "mind", "never", "cancel"}
     UNDO = re.compile(
-        r"^(please )?(undo|revert|roll ?back|reverse)"
-        r"( (it|that|this|back|them|the|last|latest|change|changes|what you did|please))*$"
+        r"^(please )?((can|could) you )?(please )?(undo|revert|roll ?back|reverse|recover|restore|(bring|get)( it| them| that)? back)"
+        r"( (it|that|this|back|them|the|last|latest|change|changes|file|files|what you did|please))*$"
     )
 
     def __init__(self, store, organizer_tools):

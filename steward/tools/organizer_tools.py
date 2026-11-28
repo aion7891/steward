@@ -1,5 +1,6 @@
 """Safety-first Agno Toolkit for organizing, ZIP archiving, recycling, and undo."""
 
+import threading
 from pathlib import Path
 
 from agno.tools import Toolkit
@@ -29,8 +30,9 @@ class OrganizerTools(Toolkit):
         self.paths = paths or ToolPaths()
         self.folders = FolderActions(config)
         self.targets = ActionTargets(self.paths, self.folders)
-        self.progress = None
-        self.done_actions = None  # a list while a chat job runs: ids of changes really made ("undo that")
+        # Per chat job (each runs in its own thread, two can run at once): live progress and the
+        # ids of changes really made ("undo that")
+        self._job = threading.local()
         self.organizer = organizer or FileOrganizer(
             config, db, memory_manager=memory_manager, logger=logger
         )
@@ -87,11 +89,8 @@ class OrganizerTools(Toolkit):
             return self._refusal(exc)
         name = Path(folders[0]).name if folders and archive_name == "archive" else archive_name  # zip named after the folder
         proposal = self.organizer.propose_action("archive", files, target_path=name, reason=reason)
-        self.organizer.recycle.on_progress = self.progress
-        try:
-            result = self._approve_and_run(proposal, dry_run)
-        finally:
-            self.organizer.recycle.on_progress = None
+        self.organizer.recycle.on_progress = self._report  # reads the progress of the job's own thread
+        result = self._approve_and_run(proposal, dry_run)
         if result.get("status") == "done":
             for folder in folders:
                 self.folders.remove_emptied_folders(files, folder)
@@ -122,6 +121,29 @@ class OrganizerTools(Toolkit):
             "mixed": f"Some of the {len(results)} recycle action(s) failed; see results.",
         }
         return {"status": overall, "message": messages[overall], "results": results}
+
+    @property
+    def progress(self):
+        """Function(label, done, total) showing live progress for this thread's chat job, or None."""
+        return getattr(self._job, "progress", None)
+
+    @progress.setter
+    def progress(self, value):
+        self._job.progress = value
+
+    @property
+    def done_actions(self):
+        """List collecting ids of changes made by this thread's chat job, or None."""
+        return getattr(self._job, "done_actions", None)
+
+    @done_actions.setter
+    def done_actions(self, value):
+        self._job.done_actions = value
+
+    def _report(self, label, done, total):
+        """Pass zip progress to this thread's chat job, if any."""
+        if self.progress is not None:
+            self.progress(label, done, total)
 
     def preflight(self, tool_name, args):
         """Return why a paused file change cannot work, or None (runs before the approval card)."""

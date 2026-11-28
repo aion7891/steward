@@ -37,7 +37,7 @@ function Working({ job }) {
   return (
     <article className="answer answer--working" aria-label="Steward is working">
       <div className="working__head">
-        <Spinner /> {job.stopping ? "Stopping…" : job.status === "queued" ? "Waiting for the previous answer…" : "Working…"}
+        <Spinner /> {job.stopping ? "Stopping…" : job.status === "queued" ? "Starting…" : "Working…"}
         <span className="faint">{formatDuration((now - job.startedAt) / 1000)}</span>
         {job.failures > 2 && <span className="faint">· reconnecting…</span>}
       </div>
@@ -69,7 +69,7 @@ export default function ChatPage() {
           <h1 className="chat-main__title">{empty ? "Chat" : (current && current.title) || "Chat"}</h1>
           <div className="row">
             {!empty && (
-              <button type="button" className="chat-icon-btn" onClick={newChat} disabled={busy} title="New chat" aria-label="New chat">
+              <button type="button" className="chat-icon-btn" onClick={newChat} title="New chat" aria-label="New chat">
                 <SquarePen size={16} />
               </button>
             )}

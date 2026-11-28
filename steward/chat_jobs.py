@@ -1,6 +1,5 @@
 """Runs chat questions in the background so the browser can leave, come back and still get the answer."""
 
-import queue
 import threading
 import time
 import uuid
@@ -11,6 +10,7 @@ from agno.team import Team
 from steward.chat_commands import ChatCommands
 from steward.chat_memory import ChatMemory
 from steward.chat_steps import ChatSteps
+from steward.chat_workers import ChatWorkers
 
 
 class ChatStopped(BaseException):
@@ -18,9 +18,9 @@ class ChatStopped(BaseException):
 
 
 class ChatJobs:
-    """A queue of chat jobs answered one at a time by a single worker thread.
+    """A queue of chat jobs; different chats are answered at the same time (MAX_PARALLEL).
 
-    A local model can only answer one question at a time anyway. Each job records its live
+    Jobs of one chat run in order (ChatWorkers). Each job records its live
     steps (ChatSteps), and its question and answer are saved in the ChatStore, so the
     conversation survives tab switches, reloads and restarts. A job is
     {"id", "kind", "session_id", "status" ("queued"|"running"|"done"), "stopping", "steps",
@@ -28,6 +28,7 @@ class ChatJobs:
     """
 
     MAX_JOBS = 50
+    MAX_PARALLEL = 2
     MAX_SECONDS = 300
     STOPPED = {
         "user": "Stopped. Steward did not finish this answer.",
@@ -52,9 +53,7 @@ class ChatJobs:
         self.memory = ChatMemory(store, lambda action_id: chat.agents.organizer_tools.organizer.get_action(action_id), mapper)
         self.jobs = {}
         self.lock = threading.Lock()
-        self.queue = queue.Queue()
-        if not run_inline:
-            threading.Thread(target=self._work, name="steward-chat-jobs", daemon=True).start()
+        self.workers = None if run_inline else ChatWorkers(self._run, self.MAX_PARALLEL)
 
     def ask(self, message, session_id):
         """Queue a question; the question is saved at once, the answer when it is ready.
@@ -136,13 +135,8 @@ class ChatJobs:
         if self.run_inline:
             self._run(job)
         else:
-            self.queue.put(job)
+            self.workers.submit(job)
         return self.get(job["id"])
-
-    def _work(self):
-        """Worker thread: answer queued jobs one after another, forever."""
-        while True:
-            self._run(self.queue.get())
 
     def _run(self, job):
         """Answer one job, record its steps and save the answer (never raises)."""

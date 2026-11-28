@@ -1,5 +1,6 @@
 """Remembers what a chat talked about, so "delete the file" or "archive it" mean the right thing."""
 
+import json
 import re
 
 
@@ -20,7 +21,6 @@ class ChatMemory:
     INTRO = ("Steward's notes on this conversation (facts, newest first). Use them for words like "
              "\"it\", \"the file\", \"that folder\" or \"the zip\", and pass these exact paths to tools. "
              "Answer as if you simply remember; never mention these notes:")
-    KINDS = {"archive": "Zipped into", "delete": "Moved to Steward's recycle bin:", "move": "Moved to"}
 
     def __init__(self, store, get_action=None, mapper=None):
         """Remember where the conversation and the action log are.
@@ -98,17 +98,41 @@ class ChatMemory:
         return [f"The user approved: {summaries}."]
 
     def _action_notes(self, data):
-        """What really changed on disk for an answer (from Steward's action log)."""
+        """What really changed on disk for an answer (from Steward's action log), with real places only."""
         notes = []
         for action_id in data.get("actions", []) if self.get_action else []:
             action = self.get_action(action_id)
-            if not action or not action.get("target_path"):
-                continue
-            target = self.mapper.to_host(action["target_path"]) if self.mapper else action["target_path"]
-            label = self.KINDS.get(action["action_type"], action["action_type"])
-            undone = " (later undone: the original files are back)" if action["status"] == "undone" else ""
-            notes.append(f"Done: {label} `{target}`{undone}")
+            if action:
+                notes.append(self._describe_action(action))
         return notes
+
+    def _describe_action(self, action):
+        """One note for one change. Steward's recycle-bin path is never shown: it is not a place to act on."""
+        sources = self._sources(action.get("source_path"))
+        first, target = self._host(sources[0] if sources else "?"), self._host(action.get("target_path") or "")
+        undone = action.get("status") == "undone"
+        if action["action_type"] == "delete":
+            return f"`{first}` was moved to Steward's recycle bin" + (
+                f"; then it was recovered and is back at `{first}`" if undone else " (it can be recovered)")
+        if action["action_type"] == "archive":
+            return f"{len(sources)} file(s) starting with `{first}` were zipped into `{target}`" + (
+                "; then unzipped again: the files are back where they were" if undone else "")
+        return f"`{first}` was moved to `{target}`" + (f"; then moved back to `{first}`" if undone else "")
+
+    def _host(self, path):
+        """Show a Docker path as the user's Mac path."""
+        return self.mapper.to_host(path) if self.mapper and path else path
+
+    @staticmethod
+    def _sources(raw):
+        """An action's source: one path, or a JSON list of paths (archives)."""
+        text = str(raw or "")
+        if text.startswith("["):
+            try:
+                return [str(p) for p in json.loads(text)]
+            except ValueError:
+                pass
+        return [text] if text else []
 
     def _quote(self, paths):
         """Format up to MAX_PATHS paths as `a`, `b`."""

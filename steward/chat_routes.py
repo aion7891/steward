@@ -81,7 +81,10 @@ class ChatRoutes:
                 count = max(1, min(int(limit), 100))
             except (TypeError, ValueError) as exc:
                 raise HTTPException(status_code=400, detail="'limit' must be a number.") from exc
-            return {"status": "ok", "conversations": self.store.list_conversations(count)}
+            # "running": an answer is being worked on in that chat right now (shown as a dot)
+            listed = [{**c, "running": self.jobs.active_for(c["id"]) is not None}
+                      for c in self.store.list_conversations(count)]
+            return {"status": "ok", "conversations": listed}
 
         @api.get("/steward/chat/conversations/{conversation_id}")
         def conversation(conversation_id):
@@ -103,7 +106,15 @@ class ChatRoutes:
                 raise HTTPException(status_code=409, detail="Wait for the current answer before deleting this chat.")
             if not self.store.delete(conversation_id):
                 raise HTTPException(status_code=404, detail="Conversation not found.")
+            self._forget_ai_session(conversation_id)
             return {"status": "ok"}
+
+    def _forget_ai_session(self, conversation_id):
+        """Delete the AI's own stored history of a chat too (Agno session)."""
+        try:
+            self.chat.agents.session_db.delete_session(conversation_id)
+        except Exception:  # the chat itself is gone; a missing AI history is not a problem
+            pass
 
     @staticmethod
     def _session(data):

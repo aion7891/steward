@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from agno.tools import Toolkit
 
+from steward.tools.file_search import FileSearch
 from steward.tools.tool_paths import ToolPaths
 
 
@@ -20,6 +21,7 @@ class FileScannerTools(Toolkit):
         self.db = db
         self.config = config
         self.paths = paths or ToolPaths()
+        self.search = FileSearch(config, db)
         super().__init__(
             name="file_scanner_tools",
             tools=[
@@ -75,7 +77,7 @@ class FileScannerTools(Toolkit):
         For "which file is the largest/biggest", call with min_mb=0 and limit=5.
         """
         threshold_mb = float(min_mb if min_mb is not None else self.config.get("scanner.large_file_mb", 100))
-        files = self.db.find_large_files(int(threshold_mb * 1024 * 1024))[: int(limit)]
+        files = self.search.largest(int(threshold_mb * 1024 * 1024), limit)  # also works before the first scan
         return {
             "status": "ok",
             "message": f"Found {len(files)} file(s) >= {threshold_mb} MB.",

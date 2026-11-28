@@ -37,14 +37,25 @@ class TestNotes:
 
     def test_rejected_and_done_changes(self):
         """A rejected card says nothing changed; a done change names where the files went, and an undo."""
-        actions = {7: {"action_type": "archive", "target_path": "/app/data/archives/docs.zip", "status": "undone"}}
+        actions = {
+            7: {"action_type": "archive", "target_path": "/app/data/archives/docs.zip", "status": "undone",
+                "source_path": '["/data/Desktop/docs/a.txt", "/data/Desktop/docs/b.txt"]'},
+            8: {"action_type": "delete", "target_path": "/app/data/recycle/123_big.mov", "status": "undone",
+                "source_path": "/data/Desktop/big.mov"},
+        }
         memory = ChatMemory(store=None, get_action=actions.get)
         card = {"summary": "Zip folder docs (33 files) into an archive", "paths": ["/Users/you/Desktop/docs"]}
         notes = memory.notes([
             saved("assistant", "needs approval", status="approval", decision="rejected", approvals=[card]),
             saved("assistant", "Done.", actions=[7]),
+            saved("assistant", "Recycled it.", actions=[8]),
         ])
-        assert "Done: Zipped into `/app/data/archives/docs.zip` (later undone: the original files are back)" in notes
+        assert ("2 file(s) starting with `/data/Desktop/docs/a.txt` were zipped into `/app/data/archives/docs.zip`; "
+                "then unzipped again: the files are back where they were") in notes
+        # A recovered file is named by its real place, never by Steward's recycle-bin path
+        assert "`/data/Desktop/big.mov` was moved to Steward's recycle bin; then it was recovered and is back at " \
+               "`/data/Desktop/big.mov`" in notes
+        assert not any("recycle/123_big.mov" in n for n in notes)
         rejected = [n for n in notes if n.startswith("The user REJECTED")][0]
         assert "Zip folder docs (33 files)" in rejected and "no file was moved, archived, zipped" in rejected
 
