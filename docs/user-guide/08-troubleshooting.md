@@ -16,6 +16,11 @@
 | **"… must be 'rw' or 'ro' (found 'yes')"** | The access switch in `.env` has another value | Use exactly `rw` (allow changes) or `ro` (read-only) |
 | Dashboard still mentions a file you deleted | Steward's list catches up on the next scans | Run a scan; full clean-up of old entries is on the to-do list for a future version |
 | The page looks out of date | It refreshes every minute | Click **Refresh** on the Dashboard |
+| Chat: **"This answer is no longer available"** | Steward restarted while it was answering | Ask again; your question is still in the chat |
+| Chat: **"reconnecting…"** next to *Working…* | The page lost contact with Steward for a moment | Wait; it reconnects by itself (start Steward if the red box appears) |
+| Chat: **"Waiting for the previous answer…"** | Steward answers one question at a time (another chat is still running) | Wait a moment; your question is next |
+| Chat: a red step **"… could not finish"** | A helper's AI call failed (often Ollama is busy or out of memory) | Ask again; close other apps if it keeps happening |
+| Chat: the answer seems to stop early | Steward stops a helper after a few tries, so it can't loop forever | Ask a more specific question, for example with the exact path |
 
 ## Frequently asked questions
 

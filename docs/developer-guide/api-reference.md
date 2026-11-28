@@ -113,6 +113,74 @@ Body: `{"message": "How much is due on the Acme invoice?", "session_id": "web-�
 Body: `{"approve": true}` (must be a JSON boolean → else 400). Returns the same shape as `/chat`.
 404: `No approval is waiting for run … It may have been decided already.`
 
+`/steward/chat` and the decision route answer synchronously (used by the CLI and the legacy UI).
+The web app uses the **chat job** routes below (0.11.0): answers run in the background, survive
+tab switches, reloads and API restarts, and record live steps.
+
+Extra fields in an `ok` reply: `folder` (a stats card when the answer scanned a folder,
+see below). Steward's own notes are appended to `reply` as `> **Steward:** …` quote lines.
+
+### `POST /steward/chat/jobs` → 202
+
+Body: `{"message": "can you scan ~/Desktop/docs", "session_id": "web-…"}`. 400 when the message is
+empty, longer than 4000 characters, or `session_id` is missing. The question is saved at once.
+
+```json
+{"status": "ok", "job": {"id": "5c1a8c98…", "kind": "message", "session_id": "web-…", "status": "queued",
+ "result": null, "created_at": "2026-11-28T08:00:31+00:00", "steps": [], "thinking": null}}
+```
+
+### `GET /steward/chat/jobs/{job_id}`
+
+Poll once a second. `status`: `queued` → `running` → `done`; `steps` grow while it runs.
+404 `This answer is no longer available (Steward may have restarted). Please ask again.`
+
+```json
+{"status": "ok", "job": {"id": "…", "status": "running", "thinking": "Scanner",
+ "steps": [{"id": 1, "kind": "handoff", "agent": "Scanner", "title": "Handing over to Scanner", "status": "done", …},
+           {"id": 2, "kind": "tool", "agent": "Scanner", "title": "Scanning /Users/you/Desktop/docs",
+            "detail": "Scanned 34 file(s) in /Users/you/Desktop/docs (34 hashed).", "status": "done",
+            "progress": null, "started": 1795334441.2, "ended": 1795334441.4}],
+ "result": null, …}}
+```
+
+When `status` is `done`, `result` has the `/steward/chat` reply plus `steps` and `duration_sec`.
+A running archive shows `"progress": {"label": "archiving", "done": 13, "total": 33}` on its step.
+A failed helper adds a step `"<Helper> could not finish"` with `status: "error"`.
+
+The `folder` card on a scan answer (numbers from SQLite, files that still exist):
+
+```json
+"folder": {"path": "/Users/you/Desktop/docs", "name": "docs", "files": 34, "total_bytes": 125829263,
+           "duplicates": 1, "temp": 0, "stale": 0, "large": 0, "reclaimable_bytes": 22,
+           "suggestions": [{"priority": "high", "kind": "deduplicate", "title": "Remove 1 duplicate copy(ies)",
+                            "reason": "…", "reclaimable_mb": 0.0, "paths": ["/Users/you/Desktop/docs/invoices/acme-03 copy.txt"]}],
+           "scanned_at": "2026-11-28T08:00:45+00:00"}
+```
+
+### `POST /steward/chat/decisions` → 202
+
+Body: `{"run_id": "…", "approve": true, "session_id": "web-…"}` (400 unless `approve` is a boolean).
+Queues the decision as a job (poll it like above) and remembers it on the saved approval card.
+
+### `GET /steward/chat/conversations?limit=30`
+
+Newest first: `[{"id": "web-…", "title": "can you scan ~/Desktop/docs", "created_at": "…", "updated_at": "…", "message_count": 9}]`.
+
+### `GET /steward/chat/conversations/{id}`
+
+`{"messages": [{"id": 1, "role": "user", "content": "…", "data": {}, "created_at": "…"}, …], "active_job": {…} | null}`.
+Assistant messages keep the full reply in `data` (status, sources, steps, folder, approvals, run_id, decision).
+
+### `DELETE /steward/chat/conversations/{id}`
+
+404 when unknown; 409 while an answer for it is still running.
+
+### `GET /steward/chat/folder?path=/Users/you/Desktop/docs`
+
+A fresh `folder` card (the workspace panel reloads it after every answer). 400 for paths Steward
+cannot see, with the same message as *Scan a folder*.
+
 ## Settings
 
 ### `GET /steward/settings`

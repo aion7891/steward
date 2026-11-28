@@ -6,6 +6,53 @@ All notable changes to Steward are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-28
+
+A live, trustworthy chat: it finds the folders you name, works on whole folders, keeps going
+while you use other pages, and shows every step. Fixes the problems found while testing 0.10.0.
+
+### Added
+- **Live chat jobs**: answers run on the server (`ChatJobs`, one at a time) and the page polls
+  them, so switching tabs, reloading or restarting Steward never loses an answer silently.
+  Routes: `POST /steward/chat/jobs`, `GET /steward/chat/jobs/{id}`, `POST /steward/chat/decisions`.
+- **Live steps** (`ChatSteps`) from Agno's event stream: hand-overs between helpers, each tool
+  call with its result, progress of long actions ("Archiving docs (13/33)"), failed helpers.
+- **Saved conversations** in SQLite (`ChatStore`) with **Recent chats** and **New chat** in the
+  sidebar. Routes: `GET/DELETE /steward/chat/conversations[/{id}]`.
+- **New chat design**: centred composer with suggestions when empty, plain answers with a
+  collapsible "Worked 9 s · Scanner · 2 steps" line, a **stats card** after a scan (from SQLite,
+  `ChatInsights`), and a **workspace panel** (folder numbers, clickable suggestions that name the
+  exact files, approvals, live activity). Light/dark, phone layout. `GET /steward/chat/folder`.
+- **Whole-folder actions**: archive (hidden, private and protected files are left in place;
+  emptied folders removed), recycle (one item) and move a folder; one **Undo** restores all.
+  Approval cards say "Zip folder docs (33 files) into an archive".
+- **Opt-in write access** in Docker: `STEWARD_DESKTOP_ACCESS`, `STEWARD_DOCUMENTS_ACCESS`,
+  `STEWARD_EXTRA_ACCESS` (default `ro`); Settings shows *writable* / *read-only* per folder.
+- **Steward's own notes** under answers (`ChatNotices`), based on real tool results:
+  practice mode ("no files were changed") and exact error messages.
+- Tests: 38 new Python tests (85 → 123) and 13 Vitest tests (22 → 35); a 5-step end-to-end chat
+  scenario passed 3/3 runs with gemma4.
+
+### Changed
+- Chat tools accept Mac paths (`/Users/you/…`, `~/…`) and translate them (`ToolPaths`), also for
+  reading documents and moving files.
+- Steps that cannot work (missing file, read-only folder, protected folder inside) are declined
+  **before** the approval card, with the reason and the fix.
+- The team stops after 6 hand-overs and each helper after 8 tool calls (`tool_call_limit`); a live
+  test once saw gemma4 hand the same task over 98 times.
+- The Organizer no longer asks for optional details (archive name, reason) before acting.
+- Steward's own folders (`/app/data/...`), protected folders and the settings file are shown as
+  Mac paths (`STEWARD_HOST_APP_DIR`).
+
+### Fixed
+- Scanning a folder from the chat reported "0 files" (the scanner skipped unknown folders silently).
+- Archiving or deleting a folder failed with "no existing files".
+- The chat answer was lost when switching to another page.
+- The AI could claim a file was deleted while practice mode only previewed it.
+- `STEWARD_DESKTOP_ACCESS=yes` (or `false`) would have made the Desktop writable, because Docker
+  treats any value except `ro` as read-write; Steward now requires exactly `rw`.
+- The test suite no longer reads the developer's own `.env` (`tests/conftest.py`).
+
 ## [0.10.0] - 2026-11-27
 
 A professional web app for Steward, plus fixes for the most serious issues found in the

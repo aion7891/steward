@@ -16,7 +16,7 @@ This guide shows every page of the web app with real screenshots. No technical k
 | 1 | [Getting started](01-getting-started.md) | Install once, start Steward, open it in your browser |
 | 2 | [Dashboard](02-dashboard.md) | Read today's numbers and clear your to-do list |
 | 3 | [Scan a folder](03-scan-a-folder.md) | Point Steward at any folder and get suggestions for it |
-| 4 | [Chat](04-chat.md) | Ask questions about your files, and approve changes from the chat |
+| 4 | [Chat](04-chat.md) | Scan, ask, archive and delete from the chat, with live steps and approvals |
 | 5 | [Reports](05-reports.md) | Read and download weekly reports |
 | 6 | [Settings](06-settings.md) | Practice mode, the AI model, and which folders are watched |
 | 7 | [Safety and undo](07-safety-and-undo.md) | How Steward protects your files, and how to undo anything |
@@ -30,7 +30,7 @@ flowchart LR
     B --> C["📋 Dashboard to-do<br/>'These 2 files are copies'"]
     C --> D{"✋ You decide<br/>Approve / Reject"}
     D -->|Approve| E["♻️ Recycle bin<br/>(Undo any time)"]
-    B --> F["💬 Chat<br/>'How much is the Acme invoice?'"]
+    B --> F["💬 Chat<br/>'scan ~/Desktop/docs, archive it'"]
     B --> G["📊 Weekly report"]
 ```
 

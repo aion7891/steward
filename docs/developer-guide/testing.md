@@ -4,8 +4,8 @@
 
 | Suite | Command | Count | Needs Ollama? |
 |:--|:--|--:|:-:|
-| Python (pytest) | `uv run pytest` | 85 | No |
-| Frontend (Vitest) | `cd frontend && npm test` | 22 | No |
+| Python (pytest) | `uv run pytest` | 123 | No |
+| Frontend (Vitest) | `cd frontend && npm test` | 35 | No |
 | Frontend build | `cd frontend && npm run build` | n/a | No |
 | Code rules | `python ~/.claude/skills/feature-dev/scripts/check_rules.py <files you changed>` | n/a | No |
 
@@ -23,6 +23,18 @@
 | `tests/test_chat_approvals.py` | Approval card, approve/reject/404/400, **dry-run always wins** (mutation-checked) |
 | `tests/test_settings.py` | Override file, `.env` locks, validation, nested folders, Ollama model checks (`httpx.MockTransport`) |
 | `tests/test_reports_page.py` | Report library/generate/read/download, path-safety |
+
+### Python test files added for the live chat (0.11.0)
+
+| File | Covers |
+|:--|:--|
+| `tests/conftest.py` | Blanks Steward's `.env` variables for every test (the real `.env` used to leak in) |
+| `tests/test_tool_paths.py` | Mac/`~`/container paths in every tool, missing and read-only folders (mutation-checked) |
+| `tests/test_chat_notices.py` | Practice-mode note when the AI claims a delete; impossible steps declined before the card |
+| `tests/test_folder_actions.py` | Archive/recycle/move a folder, Undo, hidden/private skipped, protected inside, progress (mutation-checked) |
+| `tests/test_write_access.py` | Only exactly `rw` allows changes; Settings badge; display paths; compose defaults |
+| `tests/test_chat_jobs.py` | Stream events → steps, job API, approval via jobs, conversations, Mac paths, tool limits |
+| `tests/test_chat_insights.py` | Folder card from a real scan, fresh card route |
 
 ### Faking the slow or external parts
 
@@ -54,3 +66,12 @@ Two safety tests were verified to **fail on the old code**:
    personal stack was never touched.
 
 Measured with gemma4 on the demo: chat answers 8–13 s; invoice question 7/8 correct with fresh sessions.
+
+### The 0.11.0 chat scenario (end to end)
+
+Run 3 times from a fresh start (Desktop shared writable, dry-run off, real gemma4, real web UI):
+"can you scan ~/Desktop/docs" → stats card and panel → "can you archive it" (approve; live
+progress "Archiving docs (13/33)") → "delete ~/Desktop/old-report.txt" (approve) → every answer
+shows its steps. Each step was checked on disk. **3/3 runs passed all 5 steps**, 2–23 s per answer.
+Wait for the *Working…* bubble to appear before checking that an answer finished: right after
+sending, the page has not yet started the job.

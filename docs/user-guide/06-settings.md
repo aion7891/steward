@@ -40,6 +40,8 @@ These folders are scanned automatically every hour.
   Read-only folders can be scanned, but Steward can't move, archive or recycle files there. The
   page tells you the `.env` line that allows changes (for example `STEWARD_DESKTOP_ACCESS=rw`);
   see [Getting started](01-getting-started.md#which-folders-can-steward-see).
+
+![Watched folders with writable and read-only badges](images/settings-folders.png)
 - **Add** a folder by typing its path, remove one with the 🗑 button, then click **Save folders**.
 - Steward checks each folder the same way as [Scan a folder](03-scan-a-folder.md), and refuses a
   folder that is already inside another watched folder (it would be scanned twice).

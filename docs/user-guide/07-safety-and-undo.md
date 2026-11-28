@@ -19,12 +19,15 @@ flowchart TB
 | Layer | What it guarantees |
 |:--|:--|
 | **Approval** | Nothing changes until you click Approve (on the Dashboard, a scan result, or a chat approval card) |
+| **Checked before asking** | A chat change that cannot work (missing file, read-only folder, protected folder inside) is refused with the reason, before any approval card |
+| **Honest answers** | Under a chat answer, a **Steward:** note says what really happened (for example "practice mode, nothing changed"), even if the AI words it differently |
 | **Dry-run** | While ON, even approved actions are only previews. The AI cannot switch it off; only you can, in Settings |
 | **Protected folders** | Never touched, even if approved |
 | **Recycle bin** | "Delete" never really deletes; files go to Steward's recycle bin with a note of where they came from |
 | **Undo** | Every completed action has an **Undo** button (Dashboard, *Recently completed*) |
 | **Read-only sharing** | In Docker, Documents and Desktop are shared read-only by default, so changes there are impossible until you set `STEWARD_DOCUMENTS_ACCESS=rw` / `STEWARD_DESKTOP_ACCESS=rw` yourself |
-| **Private files skipped** | Files like `.env`, keys, and anything named *password* or *secret* are never read |
+| **Private files skipped** | Files like `.env`, keys, and anything named *password* or *secret* are never read, and never zipped when you archive a folder |
+| **Whole folders, one Undo** | Archiving, recycling or moving a folder is one action, so a single **Undo** brings everything back |
 | **On your computer** | With Ollama, nothing leaves your machine. A warning appears if a cloud model is active |
 
 ## Getting a file back

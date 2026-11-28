@@ -13,11 +13,14 @@ frontend/
     ├── api/client.js                            # fetch wrapper: timeouts, FastAPI errors → ApiError
     ├── api/steward.js                           # ONE function per API route
     ├── hooks/useApi.js · usePolling.js          # load-once / poll-until-done with loading+error
+    ├── chat/ChatProvider.jsx                    # chat state ABOVE the routes: jobs, 1 s polling, recent chats
     ├── utils/format.js · chatStorage.js         # sizes, times, paths · chat history + session id
+    ├── utils/chatJobs.js · chatInsights.js      # job → message, saved chats · step summary, suggestion prompts
     ├── styles/tokens.css                        # design tokens (light + dark)
     ├── styles/base.css · components.css         # layout + shared components
-    ├── styles/{dashboard,scan,chat,reports,settings}.css   # page-specific
-    ├── components/layout/                       # AppShell (health polling, warnings), Sidebar, TopBar, PageHeader
+    ├── styles/{dashboard,scan,chat,chat-panel,reports,settings}.css   # page-specific
+    ├── components/layout/                       # AppShell (health polling, warnings), Sidebar, RecentChats, TopBar, PageHeader
+    ├── components/chat/                         # ChatHome, Composer, MessageList, StepTrail, FolderCard, ChatPanel, ApprovalCard
     ├── components/ui/                           # Card, Button, Badge, StatCard, Alert, EmptyState, Spinner
     ├── components/{dashboard,scan,chat,reports,settings}/  # page parts
     └── pages/{Dashboard,Scan,Chat,Reports,Settings}Page.jsx
