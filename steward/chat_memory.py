@@ -74,8 +74,10 @@ class ChatMemory:
         """Paths from the newest answer that named any (main one first), then earlier ones."""
         latest, earlier = [], []
         for message in reversed(messages):
-            found = self.paths_in(message["content"]) + self.paths_in(" ".join(
+            exact = list(message["data"].get("found_paths", []))  # what the tools returned, whatever the AI wrote
+            found = exact + self.paths_in(message["content"]) + self.paths_in(" ".join(
                 f"`{p}`" for step in message["data"].get("approvals", []) for p in step.get("paths", [])))
+            found = list(dict.fromkeys(found))
             if not latest and message["role"] == "assistant" and found:
                 latest = found
             else:

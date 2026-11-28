@@ -5,6 +5,7 @@ from agno.run.agent import RunOutput
 from agno.run.team import TeamRunOutput
 
 from steward.chat_approvals import ChatApprovals
+from steward.chat_found import FoundPaths
 from steward.chat_insights import ChatInsights
 from steward.chat_notices import ChatNotices
 from steward.chat_sources import ChatSources
@@ -12,10 +13,8 @@ from steward.tools.tool_paths import ToolPaths
 
 
 class ChatService:
-    """Runs chat questions through the orchestrator team, one conversation per session_id.
-
-    Every reply is {"status", "reply", "sources", "session_id"}. Sources are
-    {"kind", "label", "path"} for the files and notes the agents really used. Status is:
+    """Runs chat questions through the team (one conversation per session_id). Replies are
+    {"status", "reply", "sources", "session_id"}; sources are files and notes really used. Status is:
     - "ok": a normal answer
     - "error": the model failed (for example Ollama is not running)
     - "approval": an agent wants to change files; the reply also has "run_id" and "approvals"
@@ -36,6 +35,7 @@ class ChatService:
         self.rag_index = rag_index
         self.mapper = mapper
         self.sources = ChatSources()
+        self.found = FoundPaths()
         self.notices = ChatNotices()
         self.insights = ChatInsights(steward_app, ToolPaths(mapper) if mapper is not None else ToolPaths())
         # Steps that cannot work (missing path, read-only folder) are declined before asking
@@ -142,17 +142,19 @@ class ChatService:
             if notes:
                 text = f"{text}\n\n{ChatNotices.as_markdown(notes)}".strip()
             result.update(status="ok", reply=text, sources=sources)
-            self._add_folder_card(result, reply)
+            self._add_extras(result, reply)
         return self._show(result)
 
-    def _add_folder_card(self, result, reply):
-        """Attach real stats for a folder the answer scanned (never breaks the answer)."""
+    def _add_extras(self, result, reply):
+        """Attach real stats for a scanned folder and the exact files the tools found (never breaks the answer)."""
         try:
-            card = self.insights.folder_card(reply)
-        except Exception:  # the card is a bonus; the answer itself must always arrive
-            card = None
+            card, found = self.insights.folder_card(reply), self.found.collect(reply)
+        except Exception:  # these are a bonus; the answer itself must always arrive
+            card, found = None, []
         if card:
             result["folder"] = card
+        if found:
+            result["found_paths"] = found  # ChatMemory: "it" is the first of these
 
     def _paused(self, reply, result, notes, auto_continues, listener=None):
         """Show the approval card, after declining the steps that cannot work."""

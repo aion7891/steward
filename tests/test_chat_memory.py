@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from agno.run.base import RunStatus
 
+from steward.chat_found import FoundPaths
 from steward.chat_memory import ChatMemory
 from tests.test_chat_approvals import FakeTeam
 from tests.test_chat_control import Streamed, as_output, ask, jobs_server
@@ -58,6 +59,18 @@ class TestNotes:
         assert not any("recycle/123_big.mov" in n for n in notes)
         rejected = [n for n in notes if n.startswith("The user REJECTED")][0]
         assert "Zip folder docs (33 files)" in rejected and "no file was moved, archived, zipped" in rejected
+
+    def test_paths_the_tools_found_come_first(self):
+        """The AI only wrote the file name; the path the tool returned is still remembered, first."""
+        result = str({"status": "ok", "files": [{"path": BIG, "size_bytes": 9}, {"path": "/Users/you/b.zip"}]})
+        member = SimpleNamespace(tools=[SimpleNamespace(tool_name="find_large_files", result=result)], member_responses=None)
+        run = SimpleNamespace(tools=[SimpleNamespace(tool_name="find_files", result='{"status": "error"}')],
+                              member_responses=[member])
+        found = FoundPaths().collect(run)
+        assert found == [BIG, "/Users/you/b.zip"]
+        notes = ChatMemory(store=None).notes([
+            saved("assistant", "The largest file is Screen Recording 2026-07-08 at 16.47.31.mov.", found_paths=found)])
+        assert notes[0].startswith(f"Paths in the last answer that named files (main one first): `{BIG}`")
 
     def test_message_alone_without_notes(self):
         store = SimpleNamespace(messages=lambda session_id, limit: [saved("user", "hello")])

@@ -6,6 +6,50 @@ All notable changes to Steward are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-28
+
+A chat you stay in control of: a "no" is honoured and reported truthfully, long answers can be
+stopped, "undo that" and "recover it" work, the chat remembers what it talked about, two chats can
+answer at once, and Steward's own data can be cleared from Settings. New neumorphism colours.
+
+### Added
+- **Stop** button while Steward works (`POST /steward/chat/jobs/{id}/stop`, Agno `cancel_run`);
+  answers also stop by themselves after 5 minutes. A change already running always finishes.
+- **Typed commands** understood by Steward itself (`ChatCommands`): "no", "don't", "cancel" reject a
+  waiting approval card; "undo that", "revert back", "can you recover it", "bring it back" undo the
+  last change made from this chat (only once; practice mode has nothing to undo).
+- **Chat memory** (`ChatMemory`): every question carries short notes on the conversation (paths in the
+  last answer and the exact files its tools found (`FoundPaths`), folder last scanned, what you
+  approved or rejected, what really changed), so "delete
+  the file", "archive it" and "where is the zip" mean the right thing. Helpers see the last answers.
+- **Find files** without a scan (`FinderTools`, `FileSearch`): `find_files` ("invoice", `*.pdf`) and
+  `list_folder`; the largest files are found even before the first scan.
+- **Two chats at once** (`ChatWorkers`, 2 workers; one chat stays in order). Recent chats show which
+  chats are still working and can **delete a chat** (also the AI's memory of it).
+- **Settings → Data & cleanup** (`DataCleanup`, `DataBackups`): clear chats, knowledge notes (all or
+  topics only) and empty the recycle bin. "Clear" keeps a backup in `data/backups` (Restore);
+  "Delete for good" needs `DELETE` typed. Routes: `GET /steward/data`, `POST /steward/data/clear`,
+  `POST /steward/data/backups/{id}/restore|delete`.
+- Tests: 33 new Python tests (123 → 156) and 5 Vitest tests (35 → 40); a new-user scenario
+  (search → largest → delete → recover → archive → second chat → delete chat) passed with gemma4.
+
+### Changed
+- **Neumorphism palette**: `#E8E8E8` page, `#FFFFFF` cards with soft shadows, `#D0D0D0` lines,
+  `#C8E0F4` accent, `#F5E0E8` approvals; all text at least 4.5:1 contrast, light and dark.
+- A rejected change is answered by Steward itself ("You rejected this, so Steward did not change any
+  files."); if the AI tries the same change again it is declined automatically.
+- Questions about sizes and file names go to the Scanner; "largest" means any size.
+- `GET /steward/chat/conversations` marks chats that are still answering (`running`).
+- A waiting answer says "Starting…" instead of "Waiting for the previous answer…".
+
+### Fixed
+- After a rejected archive the AI claimed "successfully archived" (no zip was made) and
+  "where is the zip" then hung.
+- "Can you delete the file" after "which file is the largest" asked which file.
+- Switching chats while an answer was running could show that answer in the other chat.
+- The chat page kept showing cleared chats from the browser's copy.
+- The "Locked by … in .env" note on Settings wrapped into narrow columns.
+
 ## [0.11.0] - 2026-11-28
 
 A live, trustworthy chat: it finds the folders you name, works on whole folders, keeps going

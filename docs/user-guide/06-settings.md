@@ -1,6 +1,7 @@
 # 6. Settings
 
-Change how careful Steward is, which AI it uses, and which folders it watches. Changes apply
+Change how careful Steward is, which AI it uses and which folders it watches, and clear Steward's
+own data. Changes apply
 **immediately** and are **kept after a restart**.
 
 ![The Settings page](images/settings.png)
@@ -50,6 +51,28 @@ These folders are scanned automatically every hour.
 
 Shows when the hourly scan, the daily clean-up check and the weekly report run. To change it, edit
 the `scheduler:` section in `config.yaml`.
+
+## Data & cleanup
+
+At the bottom of Settings you can clear **Steward's own data**. Files in your folders are never
+touched here.
+
+![Data & cleanup](images/settings-data.png)
+
+| Item | What it is | Buttons |
+|:--|:--|:--|
+| **Chats** | Your conversations, and the AI's memory of them | Clear · Delete for good |
+| **Knowledge notes** | Everything Steward learned about your files, folders, projects and topics | Clear · Delete for good |
+| **Topics only** | Just the topic notes; the other knowledge notes stay | Clear · Delete for good |
+| **Recycle bin** | Files Steward moved to its recycle bin | Empty for good |
+
+- **Clear** asks once, then keeps a **backup**. It appears under **Backups**, where **Restore** puts
+  everything back (chats that exist already are left alone).
+- **Delete for good** and **Empty for good** keep no backup and can't be undone. The button only
+  works after you type **`DELETE`** in the box.
+- Emptying the recycle bin means **Undo** no longer works for those files.
+- While a chat is still answering, Steward waits: finish or **Stop** it, then clear the chats.
+- To delete just one chat, use the 🗑 icon in **Recent chats** ([Chat](04-chat.md#several-chats-and-deleting-them)).
 
 ## "Locked by .env"
 

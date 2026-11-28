@@ -124,6 +124,16 @@ see below). Steward's own notes are appended to `reply` as `> **Steward:** …` 
 
 Body: `{"message": "can you scan ~/Desktop/docs", "session_id": "web-…"}`. 400 when the message is
 empty, longer than 4000 characters, or `session_id` is missing. The question is saved at once.
+Two chats are answered at the same time; jobs of one chat run in order.
+
+Before the AI sees the message, Steward checks for two typed commands (`ChatCommands`):
+- "no", "don't", "cancel"… while an approval card waits → a `decision` job rejecting it; its result
+  has `"decided_run_id"` so the browser can mark the card.
+- "undo that", "revert back", "can you recover it", "bring it back" → an `undo` job that undoes the
+  last change from this chat (`actions` on the newest answer that changed files).
+
+Otherwise the message goes to the team with Steward's notes on the conversation in front
+(`ChatMemory`); the saved conversation keeps the user's own words.
 
 ```json
 {"status": "ok", "job": {"id": "5c1a8c98…", "kind": "message", "session_id": "web-…", "status": "queued",
@@ -144,7 +154,10 @@ Poll once a second. `status`: `queued` → `running` → `done`; `steps` grow wh
  "result": null, …}}
 ```
 
-When `status` is `done`, `result` has the `/steward/chat` reply plus `steps` and `duration_sec`.
+When `status` is `done`, `result` has the `/steward/chat` reply plus `steps` and `duration_sec`,
+and `actions` (ids of file changes really made) when files changed. `"stopping": true` while a stop
+is pending. A stopped job ends with `result.status: "stopped"` and reply `Stopped. Steward did not
+finish this answer.` (or the 5-minute limit message).
 A running archive shows `"progress": {"label": "archiving", "done": 13, "total": 33}` on its step.
 A failed helper adds a step `"<Helper> could not finish"` with `status: "error"`.
 
@@ -162,10 +175,18 @@ The `folder` card on a scan answer (numbers from SQLite, files that still exist)
 
 Body: `{"run_id": "…", "approve": true, "session_id": "web-…"}` (400 unless `approve` is a boolean).
 Queues the decision as a job (poll it like above) and remembers it on the saved approval card.
+A rejection is answered by Steward itself: `You rejected this, so Steward did not change any files.`
+(the run is still resumed so the AI's history records the "no"; new tries are declined).
+
+### `POST /steward/chat/jobs/{job_id}/stop`
+
+Stops a queued or running job at the next AI event (and calls Agno's `Team.cancel_run`). Returns the
+job; a finished job is returned unchanged. 404 for unknown jobs.
 
 ### `GET /steward/chat/conversations?limit=30`
 
-Newest first: `[{"id": "web-…", "title": "can you scan ~/Desktop/docs", "created_at": "…", "updated_at": "…", "message_count": 9}]`.
+Newest first: `[{"id": "web-…", "title": "can you scan ~/Desktop/docs", "created_at": "…", "updated_at": "…", "message_count": 9, "running": false}]`.
+`running` is true while that chat is still answering.
 
 ### `GET /steward/chat/conversations/{id}`
 
@@ -174,12 +195,28 @@ Assistant messages keep the full reply in `data` (status, sources, steps, folder
 
 ### `DELETE /steward/chat/conversations/{id}`
 
-404 when unknown; 409 while an answer for it is still running.
+404 when unknown; 409 while an answer for it is still running. Also deletes the AI's own history
+of the chat (its Agno session).
 
 ### `GET /steward/chat/folder?path=/Users/you/Desktop/docs`
 
 A fresh `folder` card (the workspace panel reloads it after every answer). 400 for paths Steward
 cannot see, with the same message as *Scan a folder*.
+
+## Data & cleanup
+
+Steward's own data only; files in the user's folders are never touched. Anything permanent needs
+`{"confirm": "DELETE"}` (else 400 `This deletes for good. Type DELETE to confirm.`).
+
+| Route | Body | Response |
+|:--|:--|:--|
+| `GET /steward/data` | | `{"chats": {"count": 2, "messages": 9}, "knowledge": {"count": 6, "size_bytes": 752}, "topics": {"count": 3, "size_bytes": 157}, "recycle": {"count": 1, "size_bytes": 29}, "backups": [{"id": "topics-20261128-100024.zip", "kind": "topics", "label": "Topics", "items": 3, "size_bytes": 483, "created_at": "…"}]}` |
+| `POST /steward/data/clear` | `{"target": "chats" \| "knowledge" \| "topics" \| "recycle", "hard": false, "confirm": "DELETE"}` | `{"removed": 2, "backup": "chats-20261128-100024.json" \| null, "message": "Cleared 2 chat(s). A backup was kept, …"}`. `recycle` is always permanent. 409 when clearing chats while an answer runs |
+| `POST /steward/data/backups/{id}/restore` | | `{"restored": 3, "message": "Restored 3 knowledge note(s)."}`; existing chats are skipped |
+| `POST /steward/data/backups/{id}/delete` | `{"confirm": "DELETE"}` | `{"message": "Deleted backup … for good."}` |
+
+Backup ids must match `(chats|knowledge|topics)-YYYYMMDD-HHMMSS[-n].(json|zip)` (400 otherwise, 404 if
+missing). A restored ZIP only writes `.md` files inside the knowledge folder.
 
 ## Settings
 
