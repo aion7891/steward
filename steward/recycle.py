@@ -17,13 +17,14 @@ class RecycleManager:
         self.recycle_dir = Path(recycle_dir).expanduser().resolve()
         self.archive_dir = Path(archive_dir).expanduser().resolve()
         self.logger = logger
+        self.on_progress = None  # optional function(label, done, total) for long archives
         self.recycle_dir.mkdir(parents=True, exist_ok=True)
         self.archive_dir.mkdir(parents=True, exist_ok=True)
 
     def move_to_recycle(self, file_path):
-        """Move a file into recycle_dir and write a sidecar metadata file for undo."""
+        """Move a file or a whole folder into recycle_dir, with a sidecar metadata file for undo."""
         src = Path(file_path).expanduser().resolve()
-        if not src.exists() or not src.is_file():
+        if not src.exists() or src.is_symlink():
             raise FileNotFoundError(f"Cannot recycle missing file: {src}")
 
         self.recycle_dir.mkdir(parents=True, exist_ok=True)
@@ -35,7 +36,7 @@ class RecycleManager:
             "original_path": str(src),
             "recycled_path": str(dest),
             "recycled_at": datetime.now(timezone.utc).isoformat(),
-            "size_bytes": dest.stat().st_size,
+            "size_bytes": self._size_of(dest),
         }
         self._meta_path(dest).write_text(json.dumps(meta, indent=2), encoding="utf-8")
         self._log_info(f"Recycled {src.name} -> {dest.name}")
@@ -105,7 +106,9 @@ class RecycleManager:
         for item in candidates:
             recycled = Path(item["recycled_path"])
             meta_file = self._meta_path(recycled)
-            if recycled.exists():
+            if recycled.is_dir():
+                shutil.rmtree(recycled)
+            elif recycled.exists():
                 recycled.unlink()
             if meta_file.exists():
                 meta_file.unlink()
@@ -115,7 +118,7 @@ class RecycleManager:
 
     def create_zip_archive(self, file_paths, archive_name="archive"):
         """Compress files into a verified ZIP with a manifest, then remove originals."""
-        resolved_files = [Path(p).expanduser().resolve() for p in file_paths if Path(p).exists()]
+        resolved_files = [Path(p).expanduser().resolve() for p in file_paths if Path(p).is_file()]
         if not resolved_files:
             raise FileNotFoundError("No existing files provided to archive.")
 
@@ -130,6 +133,8 @@ class RecycleManager:
                 arcname = f"{idx:03d}_{src.name}"
                 zf.write(src, arcname=arcname)
                 manifest["entries"].append({"arcname": arcname, "original_path": str(src)})
+                if self.on_progress is not None:
+                    self.on_progress("archiving", idx + 1, len(resolved_files))
             zf.writestr(self.MANIFEST_NAME, json.dumps(manifest, indent=2))
 
         with zipfile.ZipFile(zip_path, "r") as zf:
@@ -173,6 +178,13 @@ class RecycleManager:
             if not candidate.exists():
                 return candidate
             counter += 1
+
+    @staticmethod
+    def _size_of(path):
+        """Return the size in bytes of a file, or of all files inside a folder."""
+        if path.is_file():
+            return path.stat().st_size
+        return sum(item.stat().st_size for item in path.rglob("*") if item.is_file() and not item.is_symlink())
 
     @staticmethod
     def _meta_path(recycled_path):

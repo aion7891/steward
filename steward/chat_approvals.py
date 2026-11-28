@@ -18,17 +18,25 @@ class ChatApprovals:
         "archive_files": "Zip {count} file(s) into an archive",
         "move_file": "Move {count} file(s) to {target}",
     }
+    FOLDER_SUMMARIES = {
+        "delete_files": "Move folder {folders} ({files}) to Steward's recycle bin",
+        "archive_files": "Zip folder {folders} ({files}) into an archive",
+        "move_file": "Move folder {folders} ({files}) to {target}",
+    }
 
-    def __init__(self, config, preflight=None):
+    def __init__(self, config, preflight=None, summarize=None):
         """Create an empty, thread-safe store.
 
         Args:
             config: AppConfig, used to show whether dry-run will keep the step a preview.
             preflight: optional function(tool_name, args) returning why a step cannot work
                 (for example a read-only folder), or None when it can.
+            summarize: optional function(paths, tool_name) returning {"folders", "file_count"}, so the
+                card can say "Zip folder docs (14 files)".
         """
         self.config = config
         self.preflight = preflight
+        self.summarize = summarize
         self.pending = {}
         self.lock = threading.Lock()
 
@@ -87,17 +95,28 @@ class ChatApprovals:
             tool = req.tool_execution
             args = dict(getattr(tool, "tool_args", None) or {})
             paths = args.get("file_paths") or ([args["source_path"]] if args.get("source_path") else [])
-            template = self.SUMMARIES.get(tool.tool_name, "Run {tool}")
+            paths = [paths] if isinstance(paths, str) else list(paths)
             steps.append({
                 "tool": tool.tool_name,
                 "agent": req.member_agent_name,
-                "summary": template.format(count=len(paths), target=args.get("target_folder", "?"), tool=tool.tool_name),
+                "summary": self._summary(tool.tool_name, paths, args.get("target_folder", "?")),
                 "paths": [str(p) for p in paths],
                 "names": [Path(str(p)).name for p in paths],
                 "reason": args.get("reason", ""),
                 "dry_run": dry_run,
             })
         return steps
+
+    def _summary(self, tool_name, paths, target):
+        """Return the card title, naming folders and counting their files when possible."""
+        info = self.summarize(paths, tool_name) if self.summarize else None
+        if info and info["folders"]:
+            template = self.FOLDER_SUMMARIES.get(tool_name, "Run {tool}")
+            count = info["file_count"]
+            files = f"{count} file" + ("" if count == 1 else "s")
+            return template.format(folders=", ".join(info["folders"]), files=files, target=target, tool=tool_name)
+        template = self.SUMMARIES.get(tool_name, "Run {tool}")
+        return template.format(count=len(paths), target=target, tool=tool_name)
 
     def decide(self, run, approve, note=None):
         """Confirm or reject every open step of a run (it can then be resumed).

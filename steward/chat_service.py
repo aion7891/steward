@@ -35,7 +35,9 @@ class ChatService:
         self.notices = ChatNotices()
         # Steps that cannot work (missing path, read-only folder) are declined before asking
         self.approvals = ChatApprovals(
-            steward_app.config, preflight=lambda name, args: self.agents.organizer_tools.preflight(name, args)
+            steward_app.config,
+            preflight=lambda name, args: self.agents.organizer_tools.preflight(name, args),
+            summarize=lambda paths, tool: self.agents.organizer_tools.describe_targets(paths, tool),
         )
 
     def answer(self, message, session_id=None):
