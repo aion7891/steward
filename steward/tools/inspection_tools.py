@@ -70,7 +70,10 @@ class FileScannerTools(Toolkit):
         }
 
     def find_large_files(self, min_mb=None, limit=15):
-        """Return files larger than min_mb (defaults to scanner.large_file_mb)."""
+        """Return files larger than min_mb (defaults to scanner.large_file_mb), biggest first.
+
+        For "which file is the largest/biggest", call with min_mb=0 and limit=5.
+        """
         threshold_mb = float(min_mb if min_mb is not None else self.config.get("scanner.large_file_mb", 100))
         files = self.db.find_large_files(int(threshold_mb * 1024 * 1024))[: int(limit)]
         return {

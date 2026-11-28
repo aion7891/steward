@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from agno.team import Team
 
 from steward.chat_commands import ChatCommands
+from steward.chat_memory import ChatMemory
 from steward.chat_steps import ChatSteps
 
 
@@ -48,6 +49,7 @@ class ChatJobs:
         self.run_inline = run_inline
         self.max_seconds = self.MAX_SECONDS
         self.commands = ChatCommands(store, lambda: chat.agents.organizer_tools)
+        self.memory = ChatMemory(store, lambda action_id: chat.agents.organizer_tools.organizer.get_action(action_id), mapper)
         self.jobs = {}
         self.lock = threading.Lock()
         self.queue = queue.Queue()
@@ -87,11 +89,7 @@ class ChatJobs:
         return self._start({"kind": "decision", "run_id": str(run_id), "approve": bool(approve), "session_id": session_id})
 
     def get(self, job_id):
-        """Return a job as the browser sees it, or None when unknown (for example after a restart).
-
-        Args:
-            job_id: id returned by ask() or decide().
-        """
+        """Return a job as the browser sees it, or None when unknown (for example after a restart)."""
         with self.lock:
             job = self.jobs.get(str(job_id))
             return self._view(job) if job else None
@@ -115,11 +113,7 @@ class ChatJobs:
         return self.get(job_id)
 
     def active_for(self, session_id):
-        """Return the queued or running job of a conversation, or None.
-
-        Args:
-            session_id: the browser's conversation id.
-        """
+        """Return the queued or running job of a conversation (session_id), or None."""
         with self.lock:
             for job in reversed(list(self.jobs.values())):
                 if job["session_id"] == session_id and job["status"] in ("queued", "running"):
@@ -174,8 +168,9 @@ class ChatJobs:
         """Run the job's question, decision or undo and return the chat reply."""
         if job.get("stop"):
             raise ChatStopped(job["stop"])  # stopped while still waiting in the queue
-        if job["kind"] == "message":
-            return self.chat.answer(job["message"], job["session_id"], listener=listener)
+        if job["kind"] == "message":  # with Steward's notes on this chat, so "it" means the right thing
+            message = self.memory.with_context(job["session_id"], job["message"])
+            return self.chat.answer(message, job["session_id"], listener=listener)
         if job["kind"] == "undo":
             return self.commands.undo(job["session_id"])
         return self.chat.decide(job["run_id"], job["approve"], listener=listener)
