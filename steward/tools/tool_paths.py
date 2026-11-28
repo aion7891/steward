@@ -86,8 +86,22 @@ class ToolPaths:
             folder = folder.parent
         while not folder.exists() and folder != folder.parent:
             folder = folder.parent
-        if not os.access(folder, os.W_OK):
+        if not self.is_writable(folder):
             raise ValueError(self._read_only_message(str(folder)))
+
+    def is_writable(self, local_folder):
+        """True when Steward may change files in an existing folder.
+
+        In Docker, Desktop/Documents/Extra also need their .env switch set to exactly "rw":
+        Docker treats any other value (even "yes" or "false") as writable, so Steward checks too.
+
+        Args:
+            local_folder: an existing folder path Steward can open.
+        """
+        env_var = self.access_var(local_folder) if self.mapper.in_docker else None
+        if env_var and self._switch(env_var) != "rw":
+            return False
+        return os.access(local_folder, os.W_OK)
 
     def check_all_writable(self, local_paths):
         """Run check_writable on each path.
@@ -97,6 +111,10 @@ class ToolPaths:
         """
         for path in local_paths:
             self.check_writable(path)
+
+    def _switch(self, env_var):
+        """Return an access switch from the environment, lower-cased ("ro" when unset)."""
+        return str(self.mapper.env.get(env_var, "") or "ro").strip().lower()
 
     def _missing_message(self, raw_path):
         """Explain a missing path, listing the folders Steward can see in Docker."""
@@ -108,13 +126,29 @@ class ToolPaths:
             "Check the spelling, or share another folder with STEWARD_EXTRA_DIR in .env."
         )
 
+    @classmethod
+    def access_var(cls, local_path):
+        """Return the .env switch that makes local_path writable in Docker, or None.
+
+        Args:
+            local_path: a path inside the container, such as /data/Desktop/docs.
+        """
+        text = str(local_path)
+        for container, env_var in cls.ACCESS_VARS.items():
+            if text == container or text.startswith(container + "/"):
+                return env_var
+        return None
+
     def _read_only_message(self, local_folder):
         """Explain a read-only folder and how to allow changes there."""
         shown = self.mapper.to_host(local_folder)
-        for container, env_var in self.ACCESS_VARS.items():
-            if local_folder == container or local_folder.startswith(container + "/"):
-                return (
-                    f"Steward can only read {shown}: that folder is shared read-only. To let Steward "
-                    f"change files there, set {env_var}=rw in .env and run 'docker compose up -d'."
-                )
+        env_var = self.access_var(local_folder) if self.mapper.in_docker else None
+        if env_var and self._switch(env_var) not in ("ro", "rw"):
+            return (f"{env_var} must be 'rw' or 'ro' (found '{self._switch(env_var)}'), so Steward treats "
+                    f"{shown} as read-only. Set {env_var}=rw in .env and run 'docker compose up -d'.")
+        if env_var:
+            return (
+                f"Steward can only read {shown}: that folder is shared read-only. To let Steward "
+                f"change files there, set {env_var}=rw in .env and run 'docker compose up -d'."
+            )
         return f"Steward does not have permission to change files in {shown}."

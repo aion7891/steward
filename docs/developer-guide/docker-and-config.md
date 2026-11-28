@@ -15,10 +15,15 @@ Ollama runs **natively on the host**; containers reach it at `host.docker.intern
 
 | Host | Container | Mode | Used for |
 |:--|:--|:--|:--|
-| `${STEWARD_DOCUMENTS_DIR:-~/Documents}` | `/data/Documents` | ro | scanning |
-| `${STEWARD_DESKTOP_DIR:-~/Desktop}` | `/data/Desktop` | ro | scanning |
+| `${STEWARD_DOCUMENTS_DIR:-~/Documents}` | `/data/Documents` | `${STEWARD_DOCUMENTS_ACCESS:-ro}` | scanning (+ approved actions when `rw`) |
+| `${STEWARD_DESKTOP_DIR:-~/Desktop}` | `/data/Desktop` | `${STEWARD_DESKTOP_ACCESS:-ro}` | scanning (+ approved actions when `rw`) |
 | `${STEWARD_DOWNLOADS_DIR:-~/Downloads}` | `/data/Downloads` | rw | scanning + approved actions |
-| `${STEWARD_EXTRA_DIR:-./host-inventory}` | `/data/Extra` | ro | optional extra folder (API only) |
+| `${STEWARD_EXTRA_DIR:-./host-inventory}` | `/data/Extra` | `${STEWARD_EXTRA_ACCESS:-ro}` | optional extra folder (API only) |
+
+> **Docker accepts any mode except `ro` as writable** (`yes`, `false`, … all mount read-write).
+> Compose therefore also passes the switches into the containers, and `ToolPaths.is_writable`
+> only allows changes under `/data/Desktop`, `/data/Documents` and `/data/Extra` when the switch
+> is exactly `rw` (case-insensitive). Any other value is treated as read-only, with a message.
 | `./data` `./chroma` `./knowledge` `./reports` | `/app/...` | rw | SQLite, vectors, OKF notes, reports, **settings.override.yaml** |
 | `./host-inventory` | `/app/host-inventory` | ro | app list exported by `scripts/export_host_inventory.py` |
 
@@ -33,7 +38,9 @@ Ollama runs **natively on the host**; containers reach it at `host.docker.intern
 | `OLLAMA_HOST` / `DOCKER_OLLAMA_HOST` | `.env` | `http://localhost:11434` / `http://host.docker.internal:11434` | Where Ollama runs |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` | `.env` | — | Needed before switching to that cloud provider |
 | `STEWARD_DOCUMENTS_DIR` / `STEWARD_DESKTOP_DIR` / `STEWARD_DOWNLOADS_DIR` | `.env` | `~/…` | Which host folders are mounted (use absolute paths) |
-| `STEWARD_EXTRA_DIR` | `.env` | — | One more read-only folder (shown by its Mac path) |
+| `STEWARD_EXTRA_DIR` | `.env` | — | One more folder to scan (shown by its Mac path) |
+| `STEWARD_DOCUMENTS_ACCESS` / `STEWARD_DESKTOP_ACCESS` / `STEWARD_EXTRA_ACCESS` | `.env` | `ro` | Exactly `rw` lets Steward change files there (after approval); also checked in code |
+| `STEWARD_HOST_APP_DIR` | compose → API | `${PWD}` | Project folder, so `/app/data`, `/app/reports`, … show as Mac paths (display only, never scannable) |
 | `STEWARD_HOST_HOME`, `STEWARD_HOST_*_DIR` | compose → API | from `${HOME}` | Tell `PathMapper` which Mac path sits behind each mount |
 | `STEWARD_API_HOST` / `STEWARD_API_PORT` | compose | `0.0.0.0` / `7777` | API bind address in the container |
 | `STEWARD_CORS_ORIGINS` | API | `http://127.0.0.1:5173,http://localhost:5173` | Only for the Vite dev server |

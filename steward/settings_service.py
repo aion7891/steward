@@ -6,6 +6,7 @@ import yaml
 
 from steward.config import AppConfig
 from steward.models import ModelFactory
+from steward.tools.tool_paths import ToolPaths
 
 OVERRIDE_HEADER = (
     "# Settings saved from the Steward web UI. They are applied on top of config.yaml\n"
@@ -42,16 +43,21 @@ class SettingsService:
         folders = []
         for raw in self.config.get("scanner.watched_folders", []):
             path = self.config._resolve_path(raw)
-            folders.append({"path": str(path), "display_path": self.mapper.to_host(path), "available": path.is_dir()})
+            folders.append({
+                "path": str(path), "display_path": self.mapper.to_host(path), "available": path.is_dir(),
+                # Docker shares Desktop/Documents read-only unless .env opts in (STEWARD_*_ACCESS=rw)
+                "writable": path.is_dir() and ToolPaths(self.mapper).is_writable(path),
+                "access_var": ToolPaths.access_var(path),
+            })
         return {
             "status": "ok",
             "models": self.config.get("models"),
-            "safety": self.config.get("safety"),
+            "safety": self.mapper.to_host_deep(self.config.get("safety")),  # protected folders as Mac paths
             "watched_folders": self.config.get("scanner.watched_folders", []),  # kept for the legacy UI
             "folders": folders,
             "scheduler": self.config.get("scheduler"),
             "locked": self.locked(),
-            "override_file": str(self.config.override_path()),
+            "override_file": self.mapper.to_host(str(self.config.override_path())),
         }
 
     def locked(self):

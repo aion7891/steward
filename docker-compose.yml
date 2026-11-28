@@ -25,16 +25,24 @@ services:
       - STEWARD_HOST_DESKTOP_DIR=${STEWARD_DESKTOP_DIR:-${HOME}/Desktop}
       - STEWARD_HOST_DOWNLOADS_DIR=${STEWARD_DOWNLOADS_DIR:-${HOME}/Downloads}
       - STEWARD_HOST_EXTRA_DIR=${STEWARD_EXTRA_DIR:-}
+      # The project folder, so Steward's own files (data/archives, reports) show as Mac paths
+      - STEWARD_HOST_APP_DIR=${PWD:-}
+      # Steward also checks these switches: only exactly "rw" allows changes (Docker accepts any value)
+      - STEWARD_DOCUMENTS_ACCESS=${STEWARD_DOCUMENTS_ACCESS:-ro}
+      - STEWARD_DESKTOP_ACCESS=${STEWARD_DESKTOP_ACCESS:-ro}
+      - STEWARD_EXTRA_ACCESS=${STEWARD_EXTRA_ACCESS:-ro}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:7777:7777"
     volumes:
-      - ${STEWARD_DOCUMENTS_DIR:-~/Documents}:/data/Documents:ro
-      - ${STEWARD_DESKTOP_DIR:-~/Desktop}:/data/Desktop:ro
+      # Read-only by default; set STEWARD_DOCUMENTS_ACCESS=rw / STEWARD_DESKTOP_ACCESS=rw in .env
+      # to let Steward move, archive or recycle files there (always after your approval)
+      - ${STEWARD_DOCUMENTS_DIR:-~/Documents}:/data/Documents:${STEWARD_DOCUMENTS_ACCESS:-ro}
+      - ${STEWARD_DESKTOP_DIR:-~/Desktop}:/data/Desktop:${STEWARD_DESKTOP_ACCESS:-ro}
       - ${STEWARD_DOWNLOADS_DIR:-~/Downloads}:/data/Downloads
-      # Optional extra folder to scan (read-only); set STEWARD_EXTRA_DIR in .env
-      - ${STEWARD_EXTRA_DIR:-./host-inventory}:/data/Extra:ro
+      # Optional extra folder to scan; set STEWARD_EXTRA_DIR in .env (STEWARD_EXTRA_ACCESS=rw to allow changes)
+      - ${STEWARD_EXTRA_DIR:-./host-inventory}:/data/Extra:${STEWARD_EXTRA_ACCESS:-ro}
       - ./knowledge:/app/knowledge
       - ./data:/app/data
       - ./chroma:/app/chroma
@@ -57,11 +65,15 @@ services:
     environment:
       - STEWARD_CONFIG_PATH=/app/config.docker.yaml
       - OLLAMA_HOST=${DOCKER_OLLAMA_HOST:-http://host.docker.internal:11434}
+      - STEWARD_DOCUMENTS_ACCESS=${STEWARD_DOCUMENTS_ACCESS:-ro}
+      - STEWARD_DESKTOP_ACCESS=${STEWARD_DESKTOP_ACCESS:-ro}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ${STEWARD_DOCUMENTS_DIR:-~/Documents}:/data/Documents:ro
-      - ${STEWARD_DESKTOP_DIR:-~/Desktop}:/data/Desktop:ro
+      # Read-only by default; set STEWARD_DOCUMENTS_ACCESS=rw / STEWARD_DESKTOP_ACCESS=rw in .env
+      # to let Steward move, archive or recycle files there (always after your approval)
+      - ${STEWARD_DOCUMENTS_DIR:-~/Documents}:/data/Documents:${STEWARD_DOCUMENTS_ACCESS:-ro}
+      - ${STEWARD_DESKTOP_DIR:-~/Desktop}:/data/Desktop:${STEWARD_DESKTOP_ACCESS:-ro}
       - ${STEWARD_DOWNLOADS_DIR:-~/Downloads}:/data/Downloads
       - ./knowledge:/app/knowledge
       - ./data:/app/data

@@ -23,6 +23,8 @@ class PathMapper:
         ("STEWARD_HOST_DESKTOP_DIR", "/data/Desktop"),
         ("STEWARD_HOST_EXTRA_DIR", "/data/Extra"),
     )
+    # Steward's own folders, mounted from the project folder: shown as Mac paths, never scanned
+    APP_DIRS = ("data", "reports", "knowledge", "chroma")
 
     def __init__(self, config, env=None, mappings=None):
         """Load host-to-container folder mappings.
@@ -36,6 +38,7 @@ class PathMapper:
         self.env = os.environ if env is None else env
         self.mappings = list(mappings) if mappings is not None else self._load_mappings()
         self.in_docker = bool(self.mappings)
+        self.display_mappings = self.mappings + self._app_mappings()
 
     def _load_mappings(self):
         """Read (host_prefix, container_prefix) pairs from STEWARD_HOST_* variables."""
@@ -46,6 +49,11 @@ class PathMapper:
                 pairs.append((host, container))
         # Longest prefix first, so /Users/me/Documents wins over /Users/me
         return sorted(pairs, key=lambda pair: -len(pair[0]))
+
+    def _app_mappings(self):
+        """Return (host, container) pairs for Steward's own folders, from STEWARD_HOST_APP_DIR."""
+        app_dir = str(self.env.get("STEWARD_HOST_APP_DIR", "")).strip().rstrip("/")
+        return [(f"{app_dir}/{name}", f"/app/{name}") for name in self.APP_DIRS] if app_dir else []
 
     def resolve(self, raw_path):
         """Return a validated absolute Path for a folder, or raise ValueError.
@@ -97,7 +105,7 @@ class PathMapper:
     def to_host(self, container_path):
         """Translate a mounted Docker path back to the Mac path the user knows."""
         text = str(container_path)
-        for host, container in self.mappings:
+        for host, container in self.display_mappings:
             if text == container or text.startswith(container + "/"):
                 return host + text[len(container):]
         return text
@@ -111,14 +119,14 @@ class PathMapper:
         Args:
             value: any JSON-like value (dict, list, str, number, None).
         """
-        if not self.mappings:
+        if not self.display_mappings:
             return value
         if isinstance(value, dict):
             return {key: self.to_host_deep(item) for key, item in value.items()}
         if isinstance(value, (list, tuple)):
             return [self.to_host_deep(item) for item in value]
         if isinstance(value, str):
-            for host, container in self.mappings:
+            for host, container in self.display_mappings:
                 # Only whole path prefixes: /data/Extra or /data/Extra/..., never /data/ExtraStuff
                 value = re.sub(re.escape(container) + r"(?=/|\b|$)", lambda _m, h=host: h, value)
         return value
