@@ -151,6 +151,11 @@ export function getReport(reportId) {
 }
 
 /** Link that downloads one report file. */
+/** Delete one report (its Markdown and HTML copy) by its library key. */
+export function deleteReport(key) {
+  return request(`/steward/reports/library/${encodeURIComponent(key)}`, { method: "DELETE" });
+}
+
 export function reportDownloadUrl(reportId) {
   return apiUrl(`/steward/reports/${encodeURIComponent(reportId)}/download`);
 }
@@ -173,4 +178,11 @@ export function restoreBackup(backupId) {
 /** Delete a backup for good (needs confirm "DELETE"). */
 export function deleteBackup(backupId, confirm) {
   return request(`/steward/data/backups/${encodeURIComponent(backupId)}/delete`, { method: "POST", body: { confirm } });
+}
+
+/** Delete all of Steward's own data (needs confirm "DELETE"); recycle bin and backups only when asked. */
+export function deleteEverything({ emptyRecycle = false, deleteBackups = false, confirm }) {
+  return request("/steward/data/everything", {
+    method: "POST", body: { confirm, empty_recycle: Boolean(emptyRecycle), delete_backups: Boolean(deleteBackups) },
+  });
 }

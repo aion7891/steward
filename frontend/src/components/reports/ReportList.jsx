@@ -1,5 +1,6 @@
-// List of generated reports (newest first) with a "Generate report now" button.
-import { FilePlus2, FileText } from "lucide-react";
+// List of generated reports (newest first) with a "Generate report now" button and a delete
+// button per report.
+import { FilePlus2, FileText, Trash2 } from "lucide-react";
 
 import { formatDateTime, formatRelativeTime } from "../../utils/format.js";
 import Badge from "../ui/Badge.jsx";
@@ -7,7 +8,7 @@ import Button from "../ui/Button.jsx";
 import Card from "../ui/Card.jsx";
 import EmptyState from "../ui/EmptyState.jsx";
 
-export default function ReportList({ reports, selectedKey, onSelect, onGenerate, generating }) {
+export default function ReportList({ reports, selectedKey, onSelect, onGenerate, generating, onDelete, deleting }) {
   return (
     <Card title="Reports" subtitle="Auto: Sundays 09:00"
       actions={<Button size="sm" variant="primary" icon={FilePlus2} loading={generating} onClick={onGenerate}>Generate now</Button>}>
@@ -16,7 +17,7 @@ export default function ReportList({ reports, selectedKey, onSelect, onGenerate,
       ) : (
         <ul className="report-list">
           {reports.map((report) => (
-            <li key={report.key}>
+            <li key={report.key} className="report-row">
               <button type="button" className={`report-item ${report.key === selectedKey ? "report-item--active" : ""}`}
                 onClick={() => onSelect(report.key)} title={formatDateTime(report.created_at)}>
                 <span className="report-item__title">
@@ -31,6 +32,12 @@ export default function ReportList({ reports, selectedKey, onSelect, onGenerate,
                   ))}
                 </span>
               </button>
+              {onDelete && (
+                <button type="button" className="report-row__delete" onClick={() => onDelete(report)}
+                  disabled={deleting === report.key} title="Delete report" aria-label={`Delete ${report.period} report`}>
+                  <Trash2 size={14} aria-hidden="true" />
+                </button>
+              )}
             </li>
           ))}
         </ul>

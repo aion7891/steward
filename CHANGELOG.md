@@ -6,6 +6,40 @@ All notable changes to Steward are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-28
+
+A complete reset when you want one: Settings can now delete everything Steward keeps, so the
+Dashboard, Reports and Chat are really empty, and Steward starts fresh with the next scan. Single
+reports can be deleted, the sidebar folds into icons, and the Dashboard puts the long To-do list last.
+
+### Added
+- **Delete everything** (Settings → Data & cleanup): chats, knowledge notes, the scan history and file
+  index, the to-do and action history, the search index and reports in one go, after typing `DELETE`.
+  Optional: also empty the recycle bin, also delete backups. Archives are never deleted. Nothing is
+  deleted while a chat answer or a folder scan is running. Route: `POST /steward/data/everything`.
+- New Data & cleanup items, always "for good" (`DataRecords`): **Scan history & file index**,
+  **To-do & action history**, **Document search index**, **Reports**. `GET /steward/data` reports
+  their counts; `POST /steward/data/clear` accepts `index`, `actions`, `search`, `reports`.
+- **Delete one report** on the Reports page (`DELETE /steward/reports/library/{key}`); the next report opens.
+- **Collapsible sidebar**: folds to a 68 px strip of icons (names on hover, Chat dot, New chat icon),
+  remembered per browser; phones unchanged.
+- **Foldable To-do** on the Dashboard: first 10 items with "Show all", Hide/Show remembered; the
+  "to review" badge opens it (`/dashboard#todo`).
+- Tests: 10 new Python tests (156 → 166) and 3 Vitest tests (40 → 43).
+
+### Changed
+- **Dashboard order**: status cards, then Daily scan activity and File types, Suggestions with
+  Recently completed and Work habits, Recent scans, and the To-do list last.
+- The "to review" badge refreshes at once after data is deleted (no 15-second wait).
+- The worker re-reads the search index list before indexing, so an index cleared in Settings is
+  rebuilt instead of skipped (`RAGIndex.clear`, manifest reload).
+- Knowledge notes in Settings mention that they include the Dashboard's Work habits.
+
+### Fixed
+- "Delete for good" on chats, notes and the recycle bin left the Dashboard full: scans, file index,
+  to-do (e.g. 340 items) and reports could not be removed.
+- After deleting the open report, the Reports page showed nothing instead of the next report.
+
 ## [0.12.0] - 2026-11-28
 
 A chat you stay in control of: a "no" is honoured and reported truthfully, long answers can be

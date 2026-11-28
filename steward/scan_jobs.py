@@ -148,6 +148,18 @@ class FolderScanJobs:
             snapshot = dict(job)
         self.store.save(snapshot)
 
+    def busy(self):
+        """True while a folder scan is queued or running."""
+        with self.lock:
+            return any(job["status"] in ("queued", "running") for job in self.jobs.values())
+
+    def forget_all(self):
+        """Forget every finished folder scan (Settings → Data & cleanup); refused while one runs."""
+        with self.lock:
+            if any(job["status"] in ("queued", "running") for job in self.jobs.values()):
+                raise ScanBusyError("A folder scan is running. Wait for it to finish, then delete the scan history.")
+            self.jobs.clear()
+
     def _trim_history(self):
         """Forget the oldest finished jobs so memory stays small."""
         finished = sorted((j for j in self.jobs.values() if j["status"] in ("done", "failed")),

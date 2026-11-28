@@ -14,11 +14,11 @@ This guide shows every page of the web app with real screenshots. No technical k
 | # | Page | What you'll learn |
 |:-:|:--|:--|
 | 1 | [Getting started](01-getting-started.md) | Install once, start Steward, open it in your browser |
-| 2 | [Dashboard](02-dashboard.md) | Read today's numbers and clear your to-do list |
+| 2 | [Dashboard](02-dashboard.md) | Read today's numbers, clear your to-do list, fold the sidebar |
 | 3 | [Scan a folder](03-scan-a-folder.md) | Point Steward at any folder and get suggestions for it |
 | 4 | [Chat](04-chat.md) | Find, scan, archive, delete and undo from the chat; Stop, memory, several chats |
-| 5 | [Reports](05-reports.md) | Read and download weekly reports |
-| 6 | [Settings](06-settings.md) | Practice mode, the AI model, watched folders, and clearing Steward's data |
+| 5 | [Reports](05-reports.md) | Read, download and delete weekly reports |
+| 6 | [Settings](06-settings.md) | Practice mode, the AI model, watched folders, clearing data and Delete everything |
 | 7 | [Safety and undo](07-safety-and-undo.md) | How Steward protects your files, and how to undo anything |
 | 8 | [Troubleshooting and FAQ](08-troubleshooting.md) | What to do when something doesn't look right |
 

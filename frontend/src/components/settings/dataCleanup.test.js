@@ -23,4 +23,12 @@ describe("data cleanup helpers", () => {
     expect(canConfirm("hard", " DELETE ")).toBe(true);
     expect(TARGETS.find((t) => t.key === "recycle").backup).toBe(false);
   });
+
+  it("lists the records behind the Dashboard, all without a backup", () => {
+    const keys = TARGETS.filter((t) => !t.backup).map((t) => t.key);
+    expect(keys).toEqual(["index", "actions", "search", "reports", "recycle"]);
+    expect(plural(8068, "indexed file")).toBe("8,068 indexed files");
+    expect(confirmText(TARGETS.find((t) => t.key === "actions"), "hard", 340))
+      .toBe("Delete 340 actions for good? There is no backup and no undo.");
+  });
 });

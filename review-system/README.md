@@ -4,7 +4,11 @@
 > **Compared against:** `Steward-System-Design.pdf` (the PRD, 21 pages) and `project-skill.md`
 > **Method:** every source file was read line by line, the 37 automated tests were run, and the whole system was tested live on a fake sample folder with real local AI models (Ollama).
 
-> 🆕 **Update, 28 Nov 2026 (Steward 0.12.0):** a "no" is honoured and reported truthfully, the chat
+> 🆕 **Update, 28 Nov 2026 (Steward 0.13.0):** Settings can delete everything Steward keeps (a
+> complete reset; archives are never deleted), single reports can be deleted, the sidebar folds into
+> icons and the Dashboard puts the to-do list last. See **[14-whats-new-0.13.md](14-whats-new-0.13.md)**.
+>
+> **Update, 28 Nov 2026 (Steward 0.12.0):** a "no" is honoured and reported truthfully, the chat
 > remembers what "it" is, finds files by name, can be stopped, undoes and recovers, runs two chats
 > at once, and Settings can clear Steward's own data. New colours. See
 > **[13-whats-new-0.12.md](13-whats-new-0.12.md)**.
@@ -39,6 +43,7 @@ This folder explains **what Steward is, how it works inside, how to use it, and 
 | 11 | [11-whats-new-0.10.md](11-whats-new-0.10.md) | **What changed in 0.10.0**: fixed issues, new web app, updated scorecard |
 | 12 | [12-whats-new-0.11.md](12-whats-new-0.11.md) | **What changed in 0.11.0**: live chat, folder actions, opt-in write access, scenario test |
 | 13 | [13-whats-new-0.12.md](13-whats-new-0.12.md) | **What changed in 0.12.0**: honest rejections, Stop, memory, find files, two chats, data cleanup, new colours |
+| 14 | [14-whats-new-0.13.md](14-whats-new-0.13.md) | **What changed in 0.13.0**: delete everything, report delete, collapsible sidebar, new Dashboard order |
 | — | [demo/](demo/) | Rerun my test yourself (sample folder generator + demo config + script) |
 
 ---

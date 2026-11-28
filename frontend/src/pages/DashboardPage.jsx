@@ -9,6 +9,7 @@ import RecentActions from "../components/dashboard/RecentActions.jsx";
 import StatusCards from "../components/dashboard/StatusCards.jsx";
 import Suggestions from "../components/dashboard/Suggestions.jsx";
 import TodoList from "../components/dashboard/TodoList.jsx";
+import { TODO_LIMIT } from "../utils/todoView.js";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import Alert from "../components/ui/Alert.jsx";
 import Button from "../components/ui/Button.jsx";
@@ -82,21 +83,21 @@ export default function DashboardPage() {
       {header}
       {error && <Alert tone="warning" title="Showing the last loaded numbers" error={error} />}
       <StatusCards status={data.status} />
-      <div className="grid dash-grid--main">
-        <TodoList todo={data.todo} waiting={data.approved_waiting} dryRun={dryRun} onChanged={handleChanged} />
-        <Suggestions suggestions={data.suggestions} />
-      </div>
       <div className="grid grid--two">
         <DailyChart daily={data.daily} />
         <CategoryBreakdown categories={data.categories} />
       </div>
-      <div className="grid grid--two">
-        <RecentScans scans={data.recent_scans} />
+      <div className="grid dash-grid--main">
+        <Suggestions suggestions={data.suggestions} />
         <div className="stack">
           <RecentActions refreshKey={refreshKey} onChanged={handleChanged} />
           <Patterns patterns={data.patterns} />
         </div>
       </div>
+      <RecentScans scans={data.recent_scans} />
+      {/* Last, because it can be long: foldable, first 10 with "Show all"; the "to review" badge opens it */}
+      <TodoList todo={data.todo} waiting={data.approved_waiting} dryRun={dryRun} onChanged={handleChanged}
+        collapsible limit={TODO_LIMIT} />
     </>
   );
 }

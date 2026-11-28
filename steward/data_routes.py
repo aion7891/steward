@@ -3,10 +3,11 @@
 from fastapi import Body, HTTPException
 
 from steward.data_cleanup import DataCleanup
+from steward.data_records import DataRecords
 
 
 class DataRoutes:
-    """Registers /steward/data (summary), /steward/data/clear and /steward/data/backups/{id}/...
+    """Registers /steward/data (summary), /data/clear, /data/everything and /data/backups/{id}/...
 
     Anything that deletes for good (hard clear, emptying the recycle bin, deleting a backup) needs
     {"confirm": "DELETE"} in the request, so it can never happen by one stray click or request.
@@ -14,7 +15,7 @@ class DataRoutes:
 
     CONFIRM_WORD = "DELETE"
 
-    def __init__(self, app, chat_routes, session_db, forget_pending=None):
+    def __init__(self, app, chat_routes, session_db, forget_pending=None, rag_index=None, scan_jobs=None):
         """Create the cleanup service.
 
         Args:
@@ -22,9 +23,12 @@ class DataRoutes:
             chat_routes: ChatRoutes (its store holds the chats; its jobs say if an answer is running).
             session_db: function returning Agno's SqliteDb.
             forget_pending: optional function that drops waiting approval cards.
+            rag_index: optional RAGIndex (the document search index).
+            scan_jobs: optional FolderScanJobs (refuses to clear the scan history while a scan runs).
         """
+        records = DataRecords(app, rag_index=rag_index, scan_jobs=scan_jobs)
         self.cleanup = DataCleanup(app, chat_routes.store, session_db, is_busy=lambda: chat_routes.jobs.busy(),
-                                   forget_pending=forget_pending)
+                                   forget_pending=forget_pending, records=records)
 
     def register(self, api):
         """Attach the routes to a FastAPI app.
@@ -43,10 +47,20 @@ class DataRoutes:
             target, hard = str(data.get("target", "")), data.get("hard", False) is True
             if target not in DataCleanup.TARGETS:
                 raise HTTPException(status_code=400, detail=f"'target' must be one of: {', '.join(DataCleanup.TARGETS)}.")
-            if hard or target == "recycle":
+            if hard or target in DataCleanup.PERMANENT:
                 self._check_confirm(data)
             try:
                 return self.cleanup.clear(target, hard=hard)
+            except RuntimeError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+        @api.post("/steward/data/everything")
+        def delete_everything(payload=Body(...)):
+            data = payload if isinstance(payload, dict) else {}
+            self._check_confirm(data)
+            try:
+                return self.cleanup.delete_everything(empty_recycle=data.get("empty_recycle") is True,
+                                                      delete_backups=data.get("delete_backups") is True)
             except RuntimeError as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc
 

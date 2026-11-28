@@ -40,7 +40,8 @@ class StewardAPIServer:
         self.chat_routes.register(base_app)
         # Settings → Data & cleanup: clear chats, knowledge notes, the recycle bin; restore backups
         DataRoutes(self.steward_app, self.chat_routes, lambda: self.agents.session_db,
-                   forget_pending=self.chat.approvals.clear).register(base_app)
+                   forget_pending=self.chat.approvals.clear, rag_index=self.rag_index,
+                   scan_jobs=self.web_routes.jobs).register(base_app)
         # Only the Vite dev server needs CORS; in Docker nginx serves UI and API from one origin
         origins = os.getenv("STEWARD_CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173")
         base_app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in origins.split(",") if o.strip()],

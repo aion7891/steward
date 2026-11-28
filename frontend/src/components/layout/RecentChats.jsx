@@ -8,7 +8,7 @@ import { useChat } from "../../chat/ChatProvider.jsx";
 
 const SHOWN = 8;
 
-export default function RecentChats() {
+export default function RecentChats({ compact = false }) {
   const chat = useChat();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
@@ -36,6 +36,17 @@ export default function RecentChats() {
     } catch (err) {
       setError(err.message);  // for example: still answering
     }
+  }
+
+  // Collapsed sidebar: only a "New chat" icon
+  if (compact) {
+    return (
+      <div className="recent-chats recent-chats--compact">
+        <button type="button" className="recent-chats__new" onClick={startNew} title="New chat" aria-label="New chat">
+          <SquarePen size={18} aria-hidden="true" />
+        </button>
+      </div>
+    );
   }
 
   return (

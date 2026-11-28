@@ -8,10 +8,11 @@ import { useEffect, useRef, useState } from "react";
  *   loader: async function to call, e.g. getHealth.
  *   intervalMs: time between calls in milliseconds.
  *   enabled: set to false to stop polling (for example when a job has finished).
+ *   refreshKey: change it to load again right away (for example after data was deleted).
  *
  * Returns { data, error }.
  */
-export function usePolling(loader, intervalMs, enabled = true) {
+export function usePolling(loader, intervalMs, enabled = true, refreshKey = 0) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const loaderRef = useRef(loader);
@@ -47,7 +48,7 @@ export function usePolling(loader, intervalMs, enabled = true) {
       stopped = true;
       clearTimeout(timer);
     };
-  }, [intervalMs, enabled]);
+  }, [intervalMs, enabled, refreshKey]);  // a new refreshKey loads again right away
 
   return { data, error };
 }

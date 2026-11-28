@@ -24,6 +24,11 @@
 | Chat: "it" or "the file" means the wrong thing | Small models sometimes mix up earlier files | Say the file name or path once; Steward remembers it from then on |
 | Settings: **Delete for good** stays greyed out | It needs the word typed exactly | Type `DELETE` in capitals |
 | Settings: clearing chats says **"still answering"** | A chat answer is running | Wait for it or press **Stop**, then try again |
+| The Dashboard fills up again after **Delete everything** | Steward starts fresh: the hourly scan looks at your watched folders again | That's expected. To keep it smaller, remove folders under *Watched folders* |
+| **Delete everything** (or *Scan history*) says **"A folder scan is running"** | A scan from *Scan a folder* is still busy | Wait until it finishes, then try again |
+| After deleting the search index, the chat can't answer what a document says | The index is empty | Scan the folder again with *Also make documents searchable in Chat* |
+| The sidebar shows only icons | It was folded with the **«** button | Click **»** at the top left to bring it back |
+| The To-do list shows only one line | It was folded | Click **Show** on the To-do card (or the "to review" badge at the top) |
 | Chat: a red step **"… could not finish"** | A helper's AI call failed (often Ollama is busy or out of memory) | Ask again; close other apps if it keeps happening |
 | Chat: the answer seems to stop early | Steward stops a helper after a few tries, so it can't loop forever | Ask a more specific question, for example with the exact path |
 

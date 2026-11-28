@@ -51,7 +51,10 @@ Steward never empties it by itself. Files stay until you decide to remove them i
 
 ## Clearing Steward's own data
 
-Chats and knowledge notes can be cleared in the same place. **Clear** keeps a backup you can restore;
-**Delete for good** doesn't. None of this touches the files in your folders.
+Chats, knowledge notes, the scan history, the to-do list, the search index and reports can be
+deleted in [Settings → Data & cleanup](06-settings.md#data--cleanup), one by one or all at once with
+**Delete everything**. **Clear** keeps a backup you can restore; everything marked *for good* needs
+`DELETE` typed. None of this touches the files in your folders, and **your archives are never
+deleted**, not even by Delete everything. Steward starts fresh afterwards, with the next scan.
 
 ➡️ Next: [Troubleshooting and FAQ](08-troubleshooting.md)

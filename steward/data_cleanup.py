@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from steward.data_backups import DataBackups
+from steward.data_records import DataRecords
 
 
 class DataCleanup:
@@ -12,10 +13,11 @@ class DataCleanup:
     recycle bin can only be emptied for good (its backup would be the recycle bin itself).
     """
 
-    TARGETS = ("chats", "knowledge", "topics", "recycle")
+    TARGETS = ("chats", "knowledge", "topics", "recycle") + DataRecords.TARGETS
+    PERMANENT = ("recycle",) + DataRecords.TARGETS  # no backup possible or needed: always "for good"
     BUSY = "Steward is still answering in the chat. Wait for the answer (or press Stop), then clear the chats."
 
-    def __init__(self, app, chat_store, session_db, is_busy=None, forget_pending=None):
+    def __init__(self, app, chat_store, session_db, is_busy=None, forget_pending=None, records=None):
         """Remember where each kind of data lives.
 
         Args:
@@ -24,7 +26,9 @@ class DataCleanup:
             session_db: function returning Agno's SqliteDb (the AI's own memory of each chat).
             is_busy: optional function returning True while a chat answer is running.
             forget_pending: optional function that drops approval cards still waiting.
+            records: optional DataRecords (file index, actions, search index, reports).
         """
+        self.records = records or DataRecords(app)
         self.bundle = app.okf_bundle
         self.okf_root = Path(app.okf_bundle.root_dir)
         self.recycle = app.organizer.recycle
@@ -45,6 +49,7 @@ class DataCleanup:
             "topics": {"count": len(topics), "size_bytes": sum(p.stat().st_size for p in topics)},
             "recycle": {"count": len(recycled), "size_bytes": sum(i.get("size_bytes") or 0 for i in recycled)},
             "backups": self.backups.list(),
+            **self.records.summary(),
         }
 
     def clear(self, target, hard=False):
@@ -59,11 +64,43 @@ class DataCleanup:
         """
         if target not in self.TARGETS:
             raise ValueError(f"Unknown data '{target}'. Use one of: {', '.join(self.TARGETS)}.")
+        if target in DataRecords.TARGETS:
+            return self.records.clear(target)
         if target == "recycle":
             return self._empty_recycle()
         if target == "chats":
             return self._clear_chats(hard)
         return self._clear_notes(target, hard)
+
+    def delete_everything(self, empty_recycle=False, delete_backups=False):
+        """Delete all of Steward's own data for good; Steward then starts fresh with the next scan.
+
+        Chats, knowledge notes, the file index and scans, actions, the search index and reports go;
+        the recycle bin and backups only when asked. Archives (the user's zipped files) never.
+        Args:
+            empty_recycle: also empty the recycle bin.
+            delete_backups: also delete the backups made by "Clear".
+        Raises:
+            RuntimeError: when a chat answer or a folder scan is running (nothing is deleted then).
+        """
+        reason = self.BUSY if self.is_busy() else self.records.busy_reason()
+        if reason:
+            raise RuntimeError(reason)
+        removed = {"chats": self._clear_chats(True)["removed"], "knowledge": self._clear_notes("knowledge", True)["removed"]}
+        for target in DataRecords.TARGETS:
+            removed[target] = self.records.clear(target)["removed"]
+        if empty_recycle:
+            removed["recycle"] = self._empty_recycle()["removed"]
+        if delete_backups:
+            backups = [b["id"] for b in self.backups.list()]
+            for backup_id in backups:
+                self.backups.delete(backup_id)
+            removed["backups"] = len(backups)
+        kept = [name for name, left in (("the recycle bin", not empty_recycle and self.recycle.list_recycled()),
+                                        ("backups", not delete_backups and self.backups.list())) if left]
+        kept_text = f" Kept: {' and '.join(kept)}, and your archives." if kept else " Your archives were kept."
+        message = "Deleted all of Steward's data. Steward starts fresh with the next scan." + kept_text
+        return {"status": "ok", "removed": removed, "message": message}
 
     def restore(self, backup_id):
         """Put a backup back and return {"status", "message", "restored"}.

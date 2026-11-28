@@ -210,8 +210,9 @@ Steward's own data only; files in the user's folders are never touched. Anything
 
 | Route | Body | Response |
 |:--|:--|:--|
-| `GET /steward/data` | | `{"chats": {"count": 2, "messages": 9}, "knowledge": {"count": 6, "size_bytes": 752}, "topics": {"count": 3, "size_bytes": 157}, "recycle": {"count": 1, "size_bytes": 29}, "backups": [{"id": "topics-20261128-100024.zip", "kind": "topics", "label": "Topics", "items": 3, "size_bytes": 483, "created_at": "…"}]}` |
-| `POST /steward/data/clear` | `{"target": "chats" \| "knowledge" \| "topics" \| "recycle", "hard": false, "confirm": "DELETE"}` | `{"removed": 2, "backup": "chats-20261128-100024.json" \| null, "message": "Cleared 2 chat(s). A backup was kept, …"}`. `recycle` is always permanent. 409 when clearing chats while an answer runs |
+| `GET /steward/data` | | `{"chats": {"count": 2, "messages": 9}, "knowledge": {"count": 6, "size_bytes": 752}, "topics": {"count": 3, "size_bytes": 157}, "recycle": {"count": 1, "size_bytes": 29}, "index": {"count": 49, "size_bytes": 125829243, "scans": 1}, "actions": {"count": 16, "todo": 14}, "search": {"count": 4}, "reports": {"count": 2, "size_bytes": 7636}, "backups": [{"id": "topics-20261128-100024.zip", "kind": "topics", "label": "Topics", "items": 3, "size_bytes": 483, "created_at": "…"}]}` |
+| `POST /steward/data/clear` | `{"target": "chats" \| "knowledge" \| "topics" \| "recycle" \| "index" \| "actions" \| "search" \| "reports", "hard": false, "confirm": "DELETE"}` | `{"removed": 2, "backup": "chats-20261128-100024.json" \| null, "message": "Cleared 2 chat(s). A backup was kept, …"}`. `recycle`, `index`, `actions`, `search` and `reports` are always permanent (need `DELETE`). 409 when clearing chats while an answer runs, or the scan history while a folder scan runs |
+| `POST /steward/data/everything` | `{"confirm": "DELETE", "empty_recycle": false, "delete_backups": false}` | `{"removed": {"chats": 2, "knowledge": 9, "index": 49, "actions": 16, "search": 4, "reports": 2}, "message": "Deleted all of Steward's data. Steward starts fresh with the next scan. Kept: …"}`. Checks first: 409 (nothing deleted) while a chat answer or folder scan runs. Archives are never deleted |
 | `POST /steward/data/backups/{id}/restore` | | `{"restored": 3, "message": "Restored 3 knowledge note(s)."}`; existing chats are skipped |
 | `POST /steward/data/backups/{id}/delete` | `{"confirm": "DELETE"}` | `{"message": "Deleted backup … for good."}` |
 
@@ -254,6 +255,7 @@ A provider/model change rebuilds the agents.
 | `POST /steward/reports/generate` `{"period": "weekly"}` | `{"message": "New weekly report ready with 5 suggestions.", "report": {…}}`; 400 for other periods than weekly/daily/monthly |
 | `GET /steward/reports/{id}` | `{"report": {"id": 1, "format": "markdown", "name": "….md", "content": "# Steward Activity Report …"}}` |
 | `GET /steward/reports/{id}/download` | File (attachment). 404 unknown/missing, 400 if the stored path is outside `reports_dir` |
+| `DELETE /steward/reports/library/{key}` | `{"message": "Deleted the report and its files."}`: both copies (MD + HTML) and their records; files are only deleted inside `reports_dir`. 404 for unknown keys |
 
 ## Older routes (kept for the CLI and the legacy Streamlit UI)
 

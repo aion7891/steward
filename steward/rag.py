@@ -109,6 +109,7 @@ class RAGIndex:
 
     def index_from_database(self, db, force=False):
         """Index all supported, non-temporary files recorded in SQLite."""
+        self.manifest = self._load_manifest()  # the index may have been cleared in another process (Settings)
         summary = {"indexed": 0, "skipped": 0, "empty": 0, "errors": 0, "total_chunks": 0}
         for record in db.list_files():
             if record.get("is_temp") or record.get("status") == "unreadable":
@@ -150,6 +151,15 @@ class RAGIndex:
             })
         return results
 
+    def clear(self):
+        """Delete every indexed document; the next index run starts from scratch. Returns how many files were indexed."""
+        count = len(self._load_manifest())
+        if self.vector_db.exists():
+            self.vector_db.drop()
+        self.manifest = {}
+        self._save_manifest()
+        return count
+
     def get_knowledge(self):
         """Return the underlying Agno Knowledge object for Phase 5 agents."""
         return self.knowledge
@@ -166,9 +176,7 @@ class RAGIndex:
 
     def _load_manifest(self):
         """Load the indexed-file manifest JSON from disk if it exists."""
-        if not self.manifest_path.exists():
-            return {}
-        try:
+        try:  # a missing or broken manifest means nothing is indexed yet
             return json.loads(self.manifest_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return {}

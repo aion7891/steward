@@ -4,8 +4,8 @@
 
 | Suite | Command | Count | Needs Ollama? |
 |:--|:--|--:|:-:|
-| Python (pytest) | `uv run pytest` | 156 | No |
-| Frontend (Vitest) | `cd frontend && npm test` | 40 | No |
+| Python (pytest) | `uv run pytest` | 166 | No |
+| Frontend (Vitest) | `cd frontend && npm test` | 43 | No |
 | Frontend build | `cd frontend && npm run build` | n/a | No |
 | Code rules | `python ~/.claude/skills/feature-dev/scripts/check_rules.py <files you changed>` | n/a | No |
 
@@ -44,6 +44,8 @@
 | `tests/test_chat_memory.py` | Paths in text, paths the tools found first (`FoundPaths`), last-answer paths first, REJECTED notes, real places (never the recycle path), "delete the file" carries the path, team history to helpers |
 | `tests/test_data_cleanup.py` | Summary, clear with backup + restore (twice), DELETE required, 409 while answering, Agno sessions, topics only, recycle bin, backup names, ZIP cannot escape |
 | `tests/test_new_user.py` | Find by name / pattern and largest file before any scan, list a folder, "recover it", two chats at once, one chat in order, per-thread tool state, delete one chat |
+
+| `tests/test_data_records.py` (0.13) | Record counts, DELETE always required, Dashboard empty after clearing + refilled by a scan, 409 during a folder scan, search index cleared in another process (worker) is rebuilt, one report / all reports (never outside `reports_dir`), Delete everything with and without recycle bin and backups (mutation-checked) |
 
 Streaming fakes: `Streamed` in `tests/test_chat_control.py` turns the `SimpleNamespace` runs of
 `FakeTeam` into real `TeamRunOutput`s, because chat jobs always stream.
@@ -87,6 +89,14 @@ progress "Archiving docs (13/33)") → "delete ~/Desktop/old-report.txt" (approv
 shows its steps. Each step was checked on disk. **3/3 runs passed all 5 steps**, 2–23 s per answer.
 Wait for the *Working…* bubble to appear before checking that an answer finished: right after
 sending, the page has not yet started the job.
+
+### The 0.13.0 reset scenario (end to end)
+
+Fresh stack, gemma4: fill like a long-running install (scan with to-do and search index, 2 reports, 2
+chats, notes, a real archive made from the chat, one recycled file) → Clear topics + Restore → delete
+one report → Delete everything (with the recycle bin) → Dashboard, Reports and Chat empty, badge gone
+without reload, **archive kept** → a new scan fills the Dashboard again (start fresh) → sidebar
+collapsed and To-do folded, light and dark. All steps passed.
 
 ### The 0.12.0 new-user scenario (end to end)
 
